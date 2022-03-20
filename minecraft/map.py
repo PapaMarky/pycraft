@@ -1,6 +1,6 @@
 
 from minecraft.dat_file import DatFile
-from minecraft.colors import colors as color_map
+from minecraft.colors import get_map_color
 import json
 import sys
 from PIL import Image
@@ -62,30 +62,20 @@ class Map(DatFile):
         
     def create_image(self, scale=1.0):
         width = self.get_width()
-        img = Image.new(mode="RGBA", size=(width, width))
-        print(f'WIDTH: {width}')
-        print(f' ZOOM: {self.get_zoom()}')
+        img = Image.new(mode="RGB", size=(width, width), color='#835432')
         colors = self.get_colors()
         for y in range(width):
             for x in range(width):
                 offset = x + y * width
                 color_index = colors[offset]
-                if color_index == 0:
-                    color_index = 104
-                if color_index < 0:
-                    color_index = 256 + color_index
-                if color_index >= len(color_map):
-                    print(f'BAD VALUE: {color_index}: ({x}, {y}) x {width}: OFFSET: {offset}')
-                    color_index = 75
-                if color_index >= 48 and color_index <= 51:
-                    color_index += 4
                 try:
-                    val = color_map[color_index]
-                    img.putpixel((x,y), val)
+                    if color_index != 0:
+                        val = get_map_color(color_index)
+                        img.putpixel((x,y), val)
                 except Exception as ex:
                     print(f'Exception: {ex}')
                     print(f' - ({x}, {y}) = {offset}')
-                    sys.exit(1)
+                    raise ex
 
         if scale != 1.0:
             img = img.resize((int(width * scale), int(width * scale)))
