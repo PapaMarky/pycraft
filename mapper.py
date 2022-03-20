@@ -81,14 +81,15 @@ if __name__ == '__main__':
     h = int(len(config['map']) * w0)
 
     # select 102, 76, 51 as background color to mimic maps in a frame
-    mapimage = Image.new(mode="RGB", size=(w, h), color='#835432')
+    back = config['background_color'] if 'background_color' in config else '#835432'
+    mapimage = Image.new(mode="RGBA", size=(w, h), color=back)
     dx = 0
     dy = 0
     for row in config['map']:
         dx = 0
         for m in row:
             # TODO : learn how to use "mask" so I can use alpha channels
-            mapimage.paste(images[m], (int(dx), int(dy)))
+            mapimage.paste(images[m], (int(dx), int(dy)), images[m])
             dx += w0
         dy += w0
     print(f'Adding banners...')

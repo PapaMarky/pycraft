@@ -62,7 +62,7 @@ class Map(DatFile):
         
     def create_image(self, scale=1.0):
         width = self.get_width()
-        img = Image.new(mode="RGB", size=(width, width), color='#835432')
+        img = Image.new(mode="RGBA", size=(width, width), color='#00000000')
         colors = self.get_colors()
         for y in range(width):
             for x in range(width):
