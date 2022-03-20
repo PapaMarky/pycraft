@@ -1,6 +1,6 @@
 ## Create an images from map.dat files
 from minecraft import World
-from minecraft.colors import get_color
+from minecraft.colors import get_dye_color
 
 from PIL import Image
 from PIL import ImageDraw
@@ -28,16 +28,10 @@ def draw_banner(banner, img, maporigin, mapsize, font, bannerW=6, bannerH=8):
     name = banner['name']
     ox = maporigin[0]
     oz = maporigin[1]
-    print(f'     origin: ({ox}, {oz})')
-    print(f'        pos: ({pos[0]}, {pos[2]})')
-    print(f' COLOR: "{color}"')
     x_pct = (pos[0] - ox) / mapsize[0]
     y_pct = (pos[2] - oz) / mapsize[1]
-    print(f'  size: {mapsize}')
-    print(f'offset: ({x_pct}, {y_pct})')
     pix_x = int(x_pct * img.width)
     pix_y = int(y_pct * img.height)
-    print(f'img pos: ({pix_x}, {pix_y})')
     BX = int(bannerW/2)
     BY0 = int(bannerH/3)
     poly_pts = (
@@ -47,8 +41,7 @@ def draw_banner(banner, img, maporigin, mapsize, font, bannerW=6, bannerH=8):
         (pix_x - BX, pix_y - bannerH),
         (pix_x - BX, pix_y - BY0)
     )
-    banner_color = get_color(color)
-    print(f'BANNER COLOR: {banner_color}')
+    banner_color = get_dye_color(color)
     draw = ImageDraw.Draw(img)
     draw.polygon(poly_pts, fill=banner_color, outline='black')
 
@@ -69,8 +62,10 @@ if __name__ == '__main__':
     block_w = None
     scale = config['scale'] if 'scale' in config else 1.0
     print(f'Scale: {scale}')
+    row_num = 0
     for row in config['map']:
-        print('--row--')
+        print(f'--row {row_num}--')
+        row_num += 1
         for m in row:
             print(f'-- map {m} --')
             mapobj = world.get_map(m)
@@ -78,26 +73,25 @@ if __name__ == '__main__':
                 w0 = mapobj.get_width() * scale
                 block_w = mapobj.width_in_blocks()
             img = mapobj.create_image(scale=scale)
-            img.save(f'map_{m}.png')
+            if 'saveall' in config and config['saveall']:
+                img.save(f'map_{m}.png')
             images[m] = img
 
     w = int(len(config['map'][0]) * w0)
     h = int(len(config['map']) * w0)
-    mapimage = Image.new(mode="RGBA", size=(w, h))
+
+    # select 102, 76, 51 as background color to mimic maps in a frame
+    back = config['background_color'] if 'background_color' in config else '#835432'
+    mapimage = Image.new(mode="RGBA", size=(w, h), color=back)
     dx = 0
     dy = 0
     for row in config['map']:
         dx = 0
         for m in row:
-            mapimage.paste(images[m], (int(dx), int(dy)))
+            # TODO : learn how to use "mask" so I can use alpha channels
+            mapimage.paste(images[m], (int(dx), int(dy)), images[m])
             dx += w0
         dy += w0
-
-    # for x in range(len(images[0])):
-    #     for y in range(len(images)):
-    #         dx = x * w0
-    #         dy = y * w0
-    #         mapimage.paste(images[x][y], (dx, dy))
     print(f'Adding banners...')
     dx = 0
     dy = 0
@@ -105,13 +99,16 @@ if __name__ == '__main__':
     maporigin = map_0_0.get_origin()
     mapsize = (len(config['map'][0]) * block_w, len(config['map']) * block_w)
 
-    font = ImageFont.truetype('Keyboard.ttf', size=15)
+    font_size = int(5 * scale)
+    bannerW = int(10/3 * scale)
+    bannerH = int(20/3 * scale)
+    font = ImageFont.truetype('Keyboard.ttf', size=font_size)
     for row in config['map']:
         for m in row:
             mapobj = world.get_map(m)
             banners = mapobj.get_banners()
             for banner in banners:
-                draw_banner(banner, mapimage, maporigin, mapsize, font, bannerW=10, bannerH=20)
+                draw_banner(banner, mapimage, maporigin, mapsize, font, bannerW=bannerW, bannerH=bannerH)
             dx += w0
         dy += w0
 
