@@ -73,7 +73,8 @@ if __name__ == '__main__':
                 w0 = mapobj.get_width() * scale
                 block_w = mapobj.width_in_blocks()
             img = mapobj.create_image(scale=scale)
-            img.save(f'map_{m}.png')
+            if 'saveall' in config and config['saveall']:
+                img.save(f'map_{m}.png')
             images[m] = img
 
     w = int(len(config['map'][0]) * w0)

@@ -1,6 +1,7 @@
 {
     "path": "/Users/mark/Library/Application Support/minecraft/saves/New World",
-    "scale": 2.0,
+    "scale": 3.0,
+    "saveall": false,
     "map": 
     [
 	[111, 44, 49, 54, 59],
