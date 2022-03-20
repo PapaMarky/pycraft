@@ -1,6 +1,6 @@
-from minecraft.player import Player
-from minecraft.error import McExcpetion
-from minecraft.map import Map
+from pycraft.player import Player
+from pycraft.error import PycraftExcpetion
+from pycraft.map import Map
 
 import os
 
@@ -17,9 +17,9 @@ class World:
     def get_region(self, pos):
         if not isinstance(pos, list) and not isinstance(pos, tuple):
             print (f'type: {type(pos)}')
-            raise McExcpetion('pos is not a list')
+            raise PycraftExcpetion('pos is not a list')
         if len(pos) < 2 or len(pos) > 3:
-            raise McExcpetion('pos must be a list of 2 or 3 numbers')
+            raise PycraftExcpetion('pos must be a list of 2 or 3 numbers')
         for v in pos:
             if not type(v) in (float, int):
-                raise McExcpetion('pos must be a list of 2 or 3 numbers')
+                raise PycraftExcpetion('pos must be a list of 2 or 3 numbers')

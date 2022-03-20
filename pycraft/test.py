@@ -1,4 +1,4 @@
-from minecraft import DatFile
+from pycraft import DatFile
 import json
 
 f = DatFile('/Users/mark/Library/Application Support/minecraft/saves/New World/data/map_106.dat')

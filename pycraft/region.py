@@ -1,7 +1,7 @@
 import os
 
 from math import floor
-from minecraft import mca
+from pycraft import mca
 
 # Notes: Region is 32x32 chunks or 512x512 blocks.
 # chunks are 16x16 blocks
