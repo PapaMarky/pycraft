@@ -62,24 +62,30 @@ colorsxxx = {
     60: (216, 175, 147, 255),
     61: (127, 167, 150, 255),
 }
-def get_color(name):
-    name_map = {
-        'white': 32,
-        'red': 18,
-        'yellow': 74,
-        'gray': 84,
-        'blue': 100,
-        'black': 116,
-        'light_gray': 88
 
-    }
-    print(f'get_color("{name}")')
-    if not name in name_map:
-        print(f'--- cannot find it')
-        # name = 'white'
-    c = colors[name_map[name]]
-    print(f'--- {c}')
-    return c
+dye_colors = {
+    'black': '#1D1D21',
+    'red': '#B02E26',
+    'green': '#5E7C16',
+    'brown': '#835432',
+    'blue': '#3C44AA',
+    'purple': '#8932B8',
+    'cyan': '#169C9C',
+    'light_gray': '#9D9D97',
+    'gray': '#474F52',
+    'pink': '#F38BAA',
+    'lime': '#80C71F',
+    'yellow': '#FED83D',
+    'light_blue': '#3AB3DA',
+    'magenta': '#C74EBD',
+    'orange': '#F9801D',
+    'white': '#F9FFFE'
+}
+
+def get_color(name):
+    if name in dye_colors:
+        print(f'FOUND IN DYES: {name}: {dye_colors[name]}')
+    return dye_colors[name]
 
 colors = {
   0: (0,0,0), # Not explored
