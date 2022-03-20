@@ -22,7 +22,7 @@ def load_config(config_file):
     with open(config_file) as cfile:
         return json.loads(cfile.read())
 
-def draw_banner(banner, img, maporigin, mapsize, font):
+def draw_banner(banner, img, maporigin, mapsize, font, bannerW=6, bannerH=8):
     pos = banner['pos']
     color = banner['color']
     name = banner['name']
@@ -38,12 +38,14 @@ def draw_banner(banner, img, maporigin, mapsize, font):
     pix_x = int(x_pct * img.width)
     pix_y = int(y_pct * img.height)
     print(f'img pos: ({pix_x}, {pix_y})')
+    BX = int(bannerW/2)
+    BY0 = int(bannerH/3)
     poly_pts = (
         (pix_x, pix_y),
-        (pix_x + 3, pix_y - 3),
-        (pix_x + 3, pix_y - 8),
-        (pix_x - 3, pix_y - 8),
-        (pix_x - 3, pix_y - 3)
+        (pix_x + BX, pix_y - BY0),
+        (pix_x + BX, pix_y - bannerH),
+        (pix_x - BX, pix_y - bannerH),
+        (pix_x - BX, pix_y - BY0)
     )
     banner_color = get_color(color)
     print(f'BANNER COLOR: {banner_color}')
@@ -103,13 +105,13 @@ if __name__ == '__main__':
     maporigin = map_0_0.get_origin()
     mapsize = (len(config['map'][0]) * block_w, len(config['map']) * block_w)
 
-    font = ImageFont.truetype('Keyboard.ttf')
+    font = ImageFont.truetype('Keyboard.ttf', size=15)
     for row in config['map']:
         for m in row:
             mapobj = world.get_map(m)
             banners = mapobj.get_banners()
             for banner in banners:
-                draw_banner(banner, mapimage, maporigin, mapsize, font)
+                draw_banner(banner, mapimage, maporigin, mapsize, font, bannerW=10, bannerH=20)
             dx += w0
         dy += w0
 
