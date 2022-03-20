@@ -99,13 +99,16 @@ if __name__ == '__main__':
     maporigin = map_0_0.get_origin()
     mapsize = (len(config['map'][0]) * block_w, len(config['map']) * block_w)
 
-    font = ImageFont.truetype('Keyboard.ttf', size=15)
+    font_size = int(5 * scale)
+    bannerW = int(10/3 * scale)
+    bannerH = int(20/3 * scale)
+    font = ImageFont.truetype('Keyboard.ttf', size=font_size)
     for row in config['map']:
         for m in row:
             mapobj = world.get_map(m)
             banners = mapobj.get_banners()
             for banner in banners:
-                draw_banner(banner, mapimage, maporigin, mapsize, font, bannerW=10, bannerH=20)
+                draw_banner(banner, mapimage, maporigin, mapsize, font, bannerW=bannerW, bannerH=bannerH)
             dx += w0
         dy += w0
 
