@@ -1,7 +1,7 @@
 ''' 
 Exceptions and error handling utilities
 '''
-class McExcpetion(Exception):
+class PycraftExcpetion(Exception):
     '''
     Generic exception for this package.
     '''

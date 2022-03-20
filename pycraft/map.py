@@ -1,6 +1,6 @@
 
-from minecraft.dat_file import DatFile
-from minecraft.colors import get_map_color
+from pycraft.dat_file import DatFile
+from pycraft.colors import get_map_color
 import json
 import sys
 from PIL import Image

@@ -1,6 +1,6 @@
-from minecraft import chunk
-from minecraft import error
-from minecraft import mca
+from pycraft import chunk
+from pycraft import error
+from pycraft import mca
 
 class McaFile:
     def __init__(self, path=None):
@@ -11,12 +11,12 @@ class McaFile:
 
     def load(self):
         if not self._path:
-            raise McExcpetion('McaFile: path not set')
+            raise PycraftExcpetion('McaFile: path not set')
         if not os.path.exists(self._path):
-            raise McExcpetion(f'McaFile: file not found: "{self._path}"')
-        self._mca = mca.Mca(self._path)
+            raise PycraftExcpetion(f'McaFile: file not found: "{self._path}"')
+        self._mca = mca.Pycrafta(self._path)
         
     def get_chunck(self, chunk_x, chunk_y):
         if not self._mca:
-            raise McExcpetion('McaFile: Not open')
+            raise PycraftExcpetion('McaFile: Not open')
         return Chunk(self._mca.get_data(chunk_x, chunk_y)
