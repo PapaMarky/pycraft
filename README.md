@@ -2,6 +2,7 @@
 python libs for having fun with minecraft data sets.
 
 Requires python3
+Requires https://github.com/PapaMarky/Python-NBT
 
 ## Installing
 
@@ -9,7 +10,9 @@ Build or otherwise obtain the package file: `pycraft-0.0.1-py3-none-any.whl`
 
 Run the command `pip3 pycraft-0.0.1-py3-none-any.whl`
 
-I used a modified version of python-nbt. Once I make a fork and make my version available (or the orginal author applies my changes) I will update this document.
+I used a modified version of python-nbt. You can obtain the modified version from https://github.com/PapaMarky/Python-NBT.
+
+Follow the README instructions for building and installing _before_ installing this package.
 
 ## Building the Package File
 
