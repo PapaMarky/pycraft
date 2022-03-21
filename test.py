@@ -4,8 +4,8 @@ import json
 import os
 import sys
 
-from minecraft import mca
-from minecraft import Player
+from pycraft import mca
+from pycraft import Player
 import python_nbt.nbt as nbt
 
 WORLD_PATH = '/Users/mark/Library/Application Support/minecraft/saves/New World'

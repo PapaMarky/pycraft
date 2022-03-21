@@ -1,6 +1,6 @@
 ## Create an images from map.dat files
-from minecraft import World
-from minecraft.colors import get_dye_color
+from pycraft import World
+from pycraft.colors import get_dye_color
 
 from PIL import Image
 from PIL import ImageDraw
