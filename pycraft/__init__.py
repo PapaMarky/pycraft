@@ -1,6 +1,6 @@
 __version__ = '0.0.1'
 
-from pycraft import ntb
+from pycraft import nbt
 from pycraft import mca
 from pycraft import error
 from pycraft import colors

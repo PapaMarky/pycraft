@@ -30,7 +30,7 @@ SOFTWARE.
 
 import gzip
 import zlib
-
+import os
 
 class Mca:
     """Class used to read Minecraft region files and the chunk information contained within.
@@ -70,6 +70,8 @@ class Mca:
         We frequently pass chunkX, chunkZ as *args in this Class.
 
         filepath: full path to the region file (e.g. /opt/mc/region/r.1.1.mca)"""
+        if not os.path.isfile(filepath):
+            raise PycraftException(f'mca file missing: {filepath}')
         self.data = open(filepath, 'r+b')
 
     def get_index(self, *args):
