@@ -25,7 +25,11 @@ class Chunk:
 
     def get_tag(self, tag):
         if self._tags and tag in self._tags:
-            return self._tags[tag].value
+            return self._tags[tag]
+
+    def get_tag_obj(self, tag):
+        if self._tags and tag in self._tags:
+            return self._tags[tag]
 
     def list_tags(self):
         if not self._tags:
@@ -47,10 +51,10 @@ class EntitiesChunk(Chunk):
 
     @property
     def entities(self):
-        self.get_tag('Entities')
+        return self.get_tag('Entities') or {}
 
     def position(self):
-        self.get_tag('Position')
+        return self.get_tag('Position')
 
 class RegionChunk(Chunk):
     def __init__(self, data):

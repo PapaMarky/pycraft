@@ -8,3 +8,5 @@ from pycraft import colors
 from pycraft.player import Player
 from pycraft.world import World
 from pycraft.dat_file import DatFile
+from pycraft.entity import Entity
+from pycraft.mapimage import MapImage

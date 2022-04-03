@@ -3,6 +3,9 @@
     "scale": 3.0,
     "saveall": false,
     "background_color": "#835432",
+    "region_borders": "red",
+    "map_borders": "yellow",
+    "villages": "green",
     "map": 
     [
 	[111, 44, 49, 54, 59],

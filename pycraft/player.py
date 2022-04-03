@@ -19,9 +19,11 @@ class Player:
         if len(flist) > 1:
             print('Too many players:')
             for f in flist:
-                print(' - f')
-                raise PycraftException('Too many players')
+                print(f' - {f}')
+            raise PycraftException('Too many players')
 
+        uuid = ''.join(os.path.basename(flist[0])[:-4].split('-'))
+        self._uuid = uuid
         self._path = flist[0]
         self._nbt_data = nbt.read_from_nbt_file(self._path)
         self._world_path = world_path
@@ -42,6 +44,10 @@ class Player:
         self._region = Region.from_position_xy(self._world_path, p[0], p[2])
         return self._region
 
+    def get_vehicle(self):
+        v = self.get_attr('RootVehicle')
+        return v
+
     @property
     def chunk_position(self):
         p = self.position
@@ -50,3 +56,7 @@ class Player:
     @property
     def position(self):
         return self.get_attr('Pos').json_obj(full_json=False)
+
+    @property
+    def uuid(self):
+        return self._uuid

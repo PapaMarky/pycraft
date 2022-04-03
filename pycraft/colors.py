@@ -1,3 +1,23 @@
+def get_sheep_color(value:int):
+    sheep_colors = {
+        0: 'white',
+        1: 'orange',
+        2: 'magenta',
+        3: 'light blue',
+        4: 'yellow',
+        5: 'lime',
+        6: 'pink',
+        7: 'gray',
+        8: 'light gray',
+        9: 'cyan',
+        10: 'purple',
+        11: 'blue',
+        12: 'brown',
+        13: 'green',
+        14: 'red',
+        15: 'black'
+    }
+    return sheep_colors[value] if value in sheep_colors else None
 
 def get_dye_color(name:str):
     '''

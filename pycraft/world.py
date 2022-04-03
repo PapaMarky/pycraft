@@ -20,6 +20,9 @@ class World:
         x, y = World.pos_to_xy(pos)
         return Region.from_position_xy(self._path, x, y)
 
+    def block_to_chunk_pos(self, p):
+        return int(p/16)
+
     def get_chunk(self, pos, data_type):
         if not data_type in Region.DATA_TYPES:
             raise PycraftException(f'Bad data type: {data_type}')
@@ -27,8 +30,9 @@ class World:
         r = self.get_region(pos)
         x, y = World.pos_to_xy(pos)
         # convert world pos to chunk pos
-        cx = int(pos[0]/16)
-        cy = int(pos[2]/16)
+        cx = self.block_to_chunk_pos(pos[0])
+        cy = self.block_to_chunk_pos(pos[2])
+        # print(f'--- CHUNK {cx}, {cy}')
         return r.get_chunk(data_type, cx, cy)
 
     def pos_to_xy(pos):
