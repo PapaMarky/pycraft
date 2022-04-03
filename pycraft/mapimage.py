@@ -1,5 +1,9 @@
 ## Create an image from map.dat files
-from pycraft import World
+from pycraft.chunk import Chunk
+from pycraft.entity import EntityFactory
+from pycraft.region import Region
+from pycraft.world import World
+
 from pycraft.colors import get_dye_color
 from pycraft.error import PycraftException
 
@@ -23,9 +27,10 @@ class MapImage:
 
     def create_image(self):
         self.stitch_maps()
-        self.add_banners()
-        self.draw_region_borders()
         self.draw_map_borders()
+        self.draw_region_borders()
+        self.draw_village_borders()
+        self.add_banners()
 
     def save_image(self, fname):
         print(f'Writing map to {fname}')
@@ -48,8 +53,11 @@ class MapImage:
     def block_to_map(self, pos):
         ox = self.maporigin[0]
         oz = self.maporigin[1]
-        x_pct = (pos[0] - ox) / self.mapsize[0]
-        y_pct = (pos[2] - oz) / self.mapsize[1]
+        x = pos[0]
+        y = pos[2] if len(pos) > 2 else pos[1]
+
+        x_pct = (x - ox) / self.mapsize[0]
+        y_pct = (y - oz) / self.mapsize[1]
         pix_x = int(x_pct * self.imgsize[0])
         pix_y = int(y_pct * self.imgsize[1])
         return pix_x, pix_y
@@ -139,7 +147,7 @@ class MapImage:
         clr  = self._config['map_borders']
         line_w = 2
         draw = ImageDraw.Draw(self.mapimage)
-    
+
         X = 0
         Y = 0
         xstep = int(self.mapimage.width/nmaps[0])
@@ -158,11 +166,11 @@ class MapImage:
         clr = self._config['region_borders']
         line_w = 3
         draw = ImageDraw.Draw(self.mapimage)
-        
-        X0 = int(math.floor(self.maporigin[0] / 512.0) * 512)
-        Y0 = int(math.floor(self.maporigin[1] / 512.0) * 512)
+
+        X0 = int(math.floor(self.maporigin[0] / Region.BLOCK_WIDTH) * Region.BLOCK_WIDTH)
+        Y0 = int(math.floor(self.maporigin[1] / Region.BLOCK_WIDTH) * Region.BLOCK_WIDTH)
         print(f'Region Origin: ({X0}, {Y0})')
-        xstep = ystep = 512
+        xstep = ystep = Region.BLOCK_WIDTH
         X = X0
         while X < self.mapsize[0]:
             if X >= self.maporigin[0]:
@@ -179,4 +187,51 @@ class MapImage:
             Y += ystep
 
     def draw_village_borders(self):
-        pass
+        if not self._config['villages']:
+            return
+        # load bells from all regions on map
+        start_pos = self.maporigin
+        last_map = self.world.get_map(self._config['map'][-1:][0][-1:][0])
+        o = last_map.get_origin()
+        bw = last_map.width_in_blocks()
+        end_pos = (o[0] + bw, o[1] + bw)
+        vcenters = []
+        # visit each region on map collecting bells
+        print(f'Start: {start_pos}, End: {end_pos}')
+        print(f' - This will take a long time...')
+        Y = start_pos[1]
+        while Y < end_pos[1] + Region.BLOCK_WIDTH:
+            X = start_pos[0]
+            while X < end_pos[0] + Region.BLOCK_WIDTH:
+                region = self.world.get_region((X, 0, Y))
+                # print(f'Region of ({X}, {Y}): {region.filename}')
+                for cy in range(Chunk.BLOCK_WIDTH):
+                    for cx in range(Chunk.BLOCK_WIDTH):
+                        chunk = None
+                        try:
+                            chunk = region.get_chunk('poi', cx, cy)
+                        except PycraftException:
+                            # region doesn't exist
+                            continue
+                        sections = chunk.sections
+                        for section in sections:
+                            records = sections[section]['Records']
+                            for record in records:
+                                t = record['type'].value
+                                if t.startswith('minecraft:'):
+                                    t = t[10:]
+                                if t == 'meeting':
+                                    pos = record['pos'].value
+                                    tickets = record['free_tickets'].value
+                                    vcenters.append({'pos': pos, 'tickets': tickets})
+                X += Region.BLOCK_WIDTH
+            Y += Region.BLOCK_WIDTH
+        print(f'FOUND {len(vcenters)} villages')
+        ## Now draw boxes around all of the villages
+        draw = ImageDraw.Draw(self.mapimage)
+        VW = 32 # village width
+        for village in vcenters:
+            pos = village['pos']
+            p0 = self.block_to_map((pos[0] - VW, pos[2] - VW))
+            p1 = self.block_to_map((pos[0] + VW, pos[2] + VW))
+            draw.rectangle([p0, p1], outline=self._config['villages'], width=1)

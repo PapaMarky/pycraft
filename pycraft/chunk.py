@@ -4,6 +4,7 @@ from pycraft import nbt
 from pycraft.mca import Mca
 
 class Chunk:
+    BLOCK_WIDTH = 32
     def __init__(self, data):
         self._chunk_data = data
         self._tags = None
@@ -43,7 +44,7 @@ class PoiChunk(Chunk):
 
     @property
     def sections(self):
-        self.get_tag('Sections')
+        return self.get_tag('Sections') or {}
 
 class EntitiesChunk(Chunk):
     def __init__(self, data):

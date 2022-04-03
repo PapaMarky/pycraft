@@ -51,8 +51,8 @@ def process_region(region, player=None):
             v_ent = EntityFactory(v['Entity'])
             process_entity(v_ent, entity_count)
 
-    for cx in range(32):
-        for cy in range(32):
+    for cx in range(Chunk.BLOCK_WIDTH):
+        for cy in range(Chunk.BLOCK_WIDTH):
             entity_chunk = region.get_chunk('entities', cx, cy)
             # print(f'    {entity_chunk.position()}')
             entities = entity_chunk.entities
