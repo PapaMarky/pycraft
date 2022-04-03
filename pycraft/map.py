@@ -48,9 +48,6 @@ class Map(DatFile):
         cz = self._tags['data']['zCenter'].value
         return (cx, cz)
 
-    def block_to_pixel(self, coords):
-        center = self.get_center()
-    
     def get_colors(self):
         return self._tags['data']['colors']
 
