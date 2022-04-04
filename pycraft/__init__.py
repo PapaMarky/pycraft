@@ -10,4 +10,5 @@ from pycraft.entity import Entity
 from pycraft.mapimage import MapImage
 from pycraft.player import Player
 from pycraft.region import Region
+from pycraft.region import Chunk
 from pycraft.world import World
