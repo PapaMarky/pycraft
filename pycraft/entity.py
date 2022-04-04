@@ -29,6 +29,9 @@ class Entity():
     def get_attribute(self, attrname):
         return self._entity[attrname] if attrname in self._entity else None
 
+    def get_attributev(self, attrname):
+        return self._entity[attrname].value if attrname in self._entity else None
+
     def get_attribute_list(self):
         alist = []
         for a in self._entity:

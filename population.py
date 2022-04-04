@@ -2,6 +2,8 @@
 from pycraft import Player
 from pycraft import World
 from pycraft import Entity
+
+from pycraft.chunk import Chunk
 from pycraft.entity import EntityFactory
 
 import argparse
@@ -13,16 +15,24 @@ def parse_args():
     parser.add_argument('worldpath', type=str, help='Path to saved world')
     return parser.parse_args()
 
-def add_entity(e, entity_count):
+def add_entity(e, entity_count, number=1):
     if not e in entity_count:
         entity_count[e] = 0
-    entity_count[e] += 1
+    entity_count[e] += number
 
 def process_entity(e, entity_count):
-    print(f'Entity: {e.id}: {e.uuid}')
+    print(f'Entity: {e.id} | {e.uuid} | pos {e.position} | health {e.get_attributev("Health")}')
     if e:
-        add_entity(e.id, entity_count)
-        print(f'    POS: {e.position}')
+        if e.is_type('item'):
+            item = e.get_attribute('Item')
+            if item and 'id' in item:
+                item_id = item['id'].value
+                item_count = item['Count'].value
+                if item_id.startswith('minecraft:'):
+                    item_id = item_id[10:]
+                add_entity(item_id, entity_count, number=item_count)
+        else:
+            add_entity(e.id, entity_count)
         if e.is_type('villager'):
             home = e.home['pos'] if e.home else 'HOMELESS'
             print(f'   HOME: {home}')
@@ -30,7 +40,6 @@ def process_entity(e, entity_count):
             print(f'    JOB: {job}')
             village = e.meeting_point['pos'] if e.meeting_point else 'Vagrant'
             print(f'VILLAGE: {village}')
-                
         if e.owner:
             if e.owner == player._uuid:
                 print(f'   Owner: PLAYER')
