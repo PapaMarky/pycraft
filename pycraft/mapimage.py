@@ -1,5 +1,6 @@
 ## Create an image from map.dat files
 from pycraft.chunk import Chunk
+from pycraft.chunk import PoiSection
 from pycraft.entity import EntityFactory
 from pycraft.region import Region
 from pycraft.world import World
@@ -215,7 +216,8 @@ class MapImage:
                             continue
                         sections = chunk.sections
                         for section in sections:
-                            records = sections[section]['Records']
+                            s = PoiSection(sections[section])
+                            records = s.records
                             for record in records:
                                 t = record['type'].value
                                 if t.startswith('minecraft:'):

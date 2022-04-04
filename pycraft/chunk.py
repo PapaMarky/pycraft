@@ -38,6 +38,26 @@ class Chunk:
         for tag in self._tags:
             print(tag)
 
+class PoiSection():
+    '''
+    Wrapper for Poi Chunck Section
+    '''
+    def __init__(self, section):
+        self._section = section
+
+    def get_attribute(self, attrname):
+        return self._section[attrname] if attrname in self._section else None
+
+    def get_attribute_list(self):
+        alist = []
+        for a in self._section:
+            alist.append(a)
+        return alist
+
+    @property
+    def records(self):
+        return self.get_attribute('Records') or []
+
 class PoiChunk(Chunk):
     def __init__(self, data):
         super().__init__(data)
