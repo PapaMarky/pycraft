@@ -1,4 +1,4 @@
-__version__ = '0.0.1'
+__version__ = '1.0.0'
 
 from pycraft import nbt
 from pycraft import mca
@@ -12,3 +12,4 @@ from pycraft.player import Player
 from pycraft.region import Region
 from pycraft.region import Chunk
 from pycraft.world import World
+from pycraft.database import Database
