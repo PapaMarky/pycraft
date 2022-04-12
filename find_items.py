@@ -24,9 +24,31 @@ def parse_args():
     parser.add_argument('--distance', '-d', default=0, type=int, help='Only show items withint "distance" of the player')
     return parser.parse_args()
 
-def check_vehicle(player, search, match, pos, dist):
+def check_player(player, search, show_all, pos, dist):
     v = player.get_vehicle()
     print(f'Player vehicle: {v}')
+    print('Player Inventory')
+    inventory = player.inventory
+    show = True
+    if search and len(search) > 0:
+        show = False
+        for item in player.inventory:
+            for s in search:
+                if s in item['id'][10:]:
+                    show = True
+                    break
+    if show:
+        e_id = item['id'][10:]
+
+        print(f'{e_id} at ({pos[0]}, {pos[1]}, {pos[2]})')
+        for i in player.inventory:
+            matched = ' '
+            for s in search:
+                if s in i['id'][10:]:
+                    matched = '*'
+            if show_all or matched == '*':
+                print(f'  {matched}Slot {i["Slot"]}: {i["Count"]} {i["id"][10:]}')
+
 
 def check_items(e, search, show_all, pos, dist):
     if 'Items' in e:
@@ -42,10 +64,12 @@ def check_items(e, search, show_all, pos, dist):
                 x = e['x'].value
                 y = e['y'].value
                 z = e['z'].value
-            if dist > 0:
-                ditem = abs((x - pos[0]) * (x - pos[0]) + (y - pos[1]) * (y - pos[1]) + (z - pos[2]) * (z - pos[2]))
-                if ditem > dist:
-                    return
+
+            dist_str = ''
+            ditem = abs((x - pos[0]) * (x - pos[0]) + (y - pos[1]) * (y - pos[1]) + (z - pos[2]) * (z - pos[2]))
+            if dist > 0 and ditem > dist:
+                return
+            dist_str = f' distance: {int(math.sqrt(ditem))}'
             show = True
             if search and len(search) > 0:
                 show = False
@@ -57,8 +81,8 @@ def check_items(e, search, show_all, pos, dist):
             if show:
                 print('----------')
                 e_id = e['id'].value[10:]
-                    
-                print(f'{e_id} at ({x}, {y}, {z}) dist: {int(math.sqrt(ditem))}')
+
+                print(f'{e_id} at ({x}, {y}, {z}){dist_str}')
                 for i in e["Items"]:
                     matched = ' '
                     for s in search:
@@ -66,7 +90,7 @@ def check_items(e, search, show_all, pos, dist):
                             matched = '*'
                     if show_all or matched == '*':
                         print(f'  {matched}Slot {i["Slot"].value}: {i["Count"].value} {i["id"].value[10:]}')
-    
+
 def check_entity_data(region, search, show_all, pos, dist):
     print('Searching Entities Data...')
     for cy in range(Chunk.BLOCK_WIDTH):
@@ -76,7 +100,7 @@ def check_entity_data(region, search, show_all, pos, dist):
             # print(f'--- c {cx} {cy} ---')
             for e in chunk.entities:
                 check_items(e, search, show_all, pos, dist)
-            
+
 def check_region_data(region, search, show_all, pos, dist):
     print('Searching Region Data...')
     for cy in range(Chunk.BLOCK_WIDTH):
@@ -96,14 +120,14 @@ if __name__ == '__main__':
     search = None
     if args.search:
         search = args.search.split(',')
-    
+
     print(args.search)
     print(f'Searching...')
     if search:
-       print(f' Match {search}') 
-    
+       print(f' Match {search}')
+
     dist = args.distance * args.distance
-    check_vehicle(player, search, args.show_all, player.position, dist)
+    check_player(player, search, args.show_all, player.position, dist)
 
     region = player.get_region()
     check_region_data(region, search, args.show_all, player.position, dist)

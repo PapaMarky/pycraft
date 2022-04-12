@@ -58,5 +58,9 @@ class Player:
         return self.get_attr('Pos').json_obj(full_json=False)
 
     @property
+    def inventory(self):
+        return self.get_attr('Inventory').json_obj(full_json=False)
+
+    @property
     def uuid(self):
         return self._uuid
