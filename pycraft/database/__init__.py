@@ -20,6 +20,9 @@ class Database():
     def insert_carried_items_records(self, records):
         self.insert_records('carried_items', records)
 
+    def insert_item_modifiers_records(self, records):
+        self.insert_records('item_modifiers', records)
+
     def insert_records(self, table, records):
         query = db.insert(self._tables[table])
         ResultProxy = self._connection.execute(query, records)
@@ -51,6 +54,18 @@ class Database():
         )
         self._tables['entities'] = entities
 
+    def _create_item_modifiers_table(self):
+        item_modifiers = db.Table(
+            'item_modifiers', self._metadata,
+            db.Column('Owner', db.String(32), nullable=False),
+            db.Column('Container', db.String(32), nullable=False),
+            db.Column('slot', db.Integer(), nullable=False),
+            db.Column('modifier', db.String(32), nullable=False),
+            db.Column('value', db.Integer(), nullable=False),
+            db.Column('type', db.String(32))
+        )
+        self._tables['item_modifiers'] = item_modifiers
+
     def _create_villager_table(self):
         villagers = db.Table(
             'villagers', self._metadata,
@@ -69,4 +84,5 @@ class Database():
         self._create_entity_table()
         self._create_villager_table()
         self._create_carried_item_table()
+        self._create_item_modifiers_table()
         self._metadata.create_all(self._engine)
