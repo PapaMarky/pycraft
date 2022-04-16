@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 
@@ -26,83 +27,121 @@ def parse_args():
     parser.add_argument('--worldpath', '-w', type=str, default=None, help='Path to saved world')
     return parser.parse_args()
 
-def process_item(item, owner, container, item_list, modifier_list, slot=None):
+def get_value(v):
+    return v.value if str(type(v).__name__).startswith('NBT') else v
+
+def process_item(item, owner, pos, container, container_id, item_list, modifier_list, slot=None, debug=False):
     if slot is None and not 'Slot' in item:
         return None
     slot = slot if slot is not None else item['Slot'].value
+    if debug:
+        print(f'process_item:')
+        print(f'       item: {item}')
+        print(f'       slot: {slot}')
+        print(f'      owner: {owner}')
+        print(f'  container: {container}')
+        print(f' container_id: {container_id}')
     if 'id' in item and 'Count' in item:
-        item_type = item['id'][10:] if isinstance(item['id'], str) else item['id'].value[10:]
+        item_type = get_value(item['id'])[10:]
         count = item['Count'] if isinstance(item['Count'], int) else item['Count'].value
+        item_id = Database.next_record_id()
         damage = None
         repair_cost = None
         if 'tag' in item:
             t = item['tag']
             # Item Tag (filled_map): {'type_id': 10, 'value': {'map': {'type_id': 3, 'value': 131}}}
-            imp = ('map', 'Enchantments', 'Damage', 'RepairCost', 'display')
+            imp = ('map', 'Enchantments', 'Damage', 'RepairCost', 'display', 'StoredEnchantments', 'Potion')
             for x in t:
                 if not x in imp:
                     print(f'Item Tag ({item_type}): {item["tag"]}')
                     print(x)
             if 'Damage' in t:
-                damage = t['Damage']
+                damage = get_value(t['Damage'])
                 modifier_list.append({
-                    'Owner': owner,
-                    'Container': container,
-                    'slot': slot,
+                    'item_id': item_id,
                     'modifier': 'damage',
                     'value': damage,
                     'type': None
                 })
             if 'RepairCost' in t:
-                repair_cost = t['RepairCost']
+                repair_cost = get_value(t['RepairCost'])
                 modifier_list.append({
-                    'Owner': owner,
-                    'Container': container,
-                    'slot': slot,
+                    'item_id': item_id,
                     'modifier': 'repair_cost',
                     'value': repair_cost,
                     'type': None
                 })
             if 'map' in t:
                 modifier_list.append({
-                    'Owner': owner,
-                    'Container': container,
-                    'slot': slot,
+                    'item_id': item_id,
                     'modifier': 'map',
                     'value': t['map'].value,
                     'type': None
                 })
-            if 'display' in t  and 'color' in t['display']:
-                color = t['display']['color']
+            if 'display' in t:
+                if 'color' in t['display']:
+                    color = get_value(t['display']['color'])
+                    modifier_list.append({
+                        'item_id': item_id,
+                        'modifier': 'color',
+                        'value': color,
+                        'type': None
+                    })
+                if 'Name' in t['display']:
+                    name = get_value(t['display']['Name'])
+                    name = json.loads(name)['text']
+                    modifier_list.append({
+                        'item_id': item_id,
+                        'modifier': 'name',
+                        'value': 0,
+                        'type': name
+                    })
+            if 'Potion' in t:
+                potion = t['Potion']
+                potion_type = get_value(potion)
                 modifier_list.append({
-                    'Owner': owner,
-                    'Container': container,
-                    'slot': slot,
-                    'modifier': 'display',
-                    'value': color,
-                    'type': None
+                    'item_id': item_id,
+                    'modifier': 'potion',
+                    'value': 0,
+                    'type': potion_type[10:] if potion_type.startswith('minecraft:') else potion_type
                 })
-
             if 'Enchantments' in t:
                 for enchant in t['Enchantments']:
                     if 'id' in enchant and 'lvl' in enchant:
+                        enchant_type = get_value(enchant['id'])
+                        value = get_value(enchant['lvl'])
                         modifier_list.append({
-                            'Owner': owner,
-                            'Container': container,
-                            'slot': slot,
+                            'item_id': item_id,
                             'modifier': 'enchantment',
-                            'value': enchant['lvl'],
-                            'type': enchant['id'][10:] if enchant['id'].startswith('minecraft:') else enchant['id']
+                            'value': value,
+                            'type': enchant_type[10:] if enchant_type.startswith('minecraft:') else enchant_type
                         })
-            item_list.append({
-                'Owner': owner,
-                'Container': container,
-                'type': item_type,
-                'count': count,
-                'slot': slot
-            })
+            if 'StoredEnchantments' in t:
+                for enchant in t['StoredEnchantments']:
+                    if 'id' in enchant and 'lvl' in enchant:
+                        enchant_type = get_value(enchant['id'])
+                        value = get_value(enchant['lvl'])
+                        modifier_list.append({
+                            'item_id': item_id,
+                            'modifier': 'stored enchantment',
+                            'value': value,
+                            'type': enchant_type[10:] if enchant_type.startswith('minecraft:') else enchant_type
+                        })
+        item_list.append({
+            'Id': item_id,
+            'Owner': owner,
+            'Container': container,
+            'container_item': container_id,
+            'x': pos[0],
+            'y': pos[1],
+            'z': pos[2],
+            'type': item_type,
+            'count': count,
+            'slot': slot
+        })
+        return item_id
 
-def process_entity(entity, entity_list, carried_list, villager_list, modifier_list):
+def process_entity(entity, entity_list, item_list, villager_list, modifier_list):
     e = EntityFactory(entity)
     pos = e.position
     color = get_sheep_color(e.color)
@@ -110,6 +149,7 @@ def process_entity(entity, entity_list, carried_list, villager_list, modifier_li
     tame = e.get_attributev('Tame') == 1
     owner = e.owner
     uuid = e.uuid
+
     # print(f'{uuid} | {e.id} | {e.get_attributev("Health")} | {pos} | {color} | {chested} | {tame} | {owner}')
     ## ArmorItems
     items = e.get_attributev('ArmorItems')
@@ -117,7 +157,7 @@ def process_entity(entity, entity_list, carried_list, villager_list, modifier_li
         slot = 0
         for item in items:
             # print(f'ArmorItem: {item}')
-            i = process_item(item, uuid, 'armor', carried_list, modifier_list, slot)
+            process_item(item, uuid, pos, 'armor', None, item_list, modifier_list, slot)
             slot += 1
     ## HandItems
     items = e.get_attributev('HandItems')
@@ -125,23 +165,31 @@ def process_entity(entity, entity_list, carried_list, villager_list, modifier_li
         slot = 0
         for item in items:
             # print(f'HandItem: {item}')
-            i = process_item(item, uuid, 'hand', carried_list, modifier_list, slot)
+            process_item(item, uuid, pos, 'hand', None, item_list, modifier_list, slot)
             slot += 1
     ## Items (chest)
     items = e.get_attributev('Items')
     if items:
+        # Create an item for the entity itself
+        fake_item = {'id': 'minecraft:' + e.id, 'Count': 1}
+        chest_id = process_item(fake_item, uuid, pos, 'entity', None, item_list, modifier_list, 0)
         for item in items:
-            # print(f'ChestItem: {item}')
-            i = process_item(item, uuid, 'chest', carried_list, modifier_list)
+            process_item(item, uuid, pos, e.id, chest_id, item_list, modifier_list)
 
     # Item (contents of "item_frame" or "item")
+    # 'item': a pile of things
+    # 'item_frame': a frame that can hold items
     item = e.get_attributev('Item')
     if item:
-        i = process_item(item, uuid, e.id, carried_list, modifier_list, 0)
+        # Create an item for the entity itself
+        fake_item = {'id': 'minecraft:' + e.id, 'Count': 1}
+        entity_id = process_item(fake_item, uuid, pos, 'entity', None, item_list, modifier_list, 0)
+        process_item(item, None, pos, e.id, entity_id, item_list, modifier_list, 0)
+
     # SaddleItem: {'type_id': 10, 'value': {'id': {'type_id': 8, 'value': 'minecraft:saddle'}, 'Count': {'type_id': 1, 'value': 1}}}
     item = e.get_attributev('SaddleItem')
     if item:
-        i = process_item(item, uuid, 'saddle', carried_list, modifier_list, 0)
+        process_item(item, uuid, pos, 'saddle', None, item_list, modifier_list, 0)
 
     entity_list.append(
         {
@@ -171,8 +219,61 @@ def process_entity(entity, entity_list, carried_list, villager_list, modifier_li
                 'meet_z': meet[2]
             })
 
-def process_region(region, db):
-    entity_count = {}
+def process_entity_items(entity, item_list, modifier_list):
+    if 'Items' in entity and len(entity['Items']) > 0:
+        print(f'--- ENTITY: {entity["id"].value[10:]} ({entity["x"].value}, {entity["y"].value}, {entity["z"].value})')
+        x = y = z = None
+        if 'Pos' in entity:
+            p = entity['Pos']
+            x = int(p[0].value)
+            y = int(p[1].value)
+            z = int(p[2].value)
+        else:
+            x = entity['x'].value
+            y = entity['y'].value
+            z = entity['z'].value
+        pos = [x, y, z]
+        fake_item = {
+            'id': entity['id'],
+            'Count': 1
+        }
+        fake_item_id = process_item(fake_item, None, pos, '', None, item_list, modifier_list, 0)
+        for t in entity:
+            # Display information about unrecognized tags ("ignore" the ones we know about)
+            ignore = ('id', 'keepPacked', 'x', 'y', 'z', 'CookTime', 'BurnTime', 'CookTimeTotal', 'TransferCooldown', 'StoredEnchantments', 'Potion')
+            if t in ignore:
+                continue
+            if t == 'RecipesUsed':
+                n = len(entity[t])
+                if n > 0:
+                    print(f'{"RecipesUsed":>10}: ({len(entity[t])})')
+                    for r in entity[t]:
+                        print(f'{r[10:]:>15}: {entity[t][r].value}')
+            elif t == 'Items':
+                for item in entity[t].value:
+                    process_item(item, None, pos, entity['id'].value[10:], fake_item_id, item_list, modifier_list)
+                    # print(f'{"Slot":>10} {item["Slot"].value}: {item["id"].value[10:]} ({item["Count"].value})')
+            else:
+                print(f'{t:>10}: {entity[t].value}')
+
+def process_regions(region, db):
+    item_list = []
+    modifier_list = []
+    for cx in range(Chunk.BLOCK_WIDTH):
+        for cy in range(Chunk.BLOCK_WIDTH):
+            # print(f'Loading chunk {cx}, {cy}...')
+            region_chunk = region.get_chunk('region', cx, cy)
+            block_entities = region_chunk.get_tag('block_entities')
+            for entity in block_entities:
+                process_entity_items(entity, item_list, modifier_list)
+    if len(item_list) > 0:
+        db.insert_items_records(item_list)
+    if len(modifier_list) > 0:
+        # for mod in modifier_list:
+        #     print(f'MOD: {mod}')
+        db.insert_item_modifiers_records(modifier_list)
+
+def process_entities(region, db):
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
             # print(f'Loading chunk {cx}, {cy}...')
@@ -180,29 +281,29 @@ def process_region(region, db):
             entities = entity_chunk.entities
             entity_list = []
             villager_list = []
-            carried_list = []
+            item_list = []
             modifier_list = []
             for entity in entities:
-                process_entity(entity, entity_list, carried_list, villager_list, modifier_list)
+                process_entity(entity, entity_list, item_list, villager_list, modifier_list)
 
             if len(entity_list) > 0:
                 db.insert_entity_records(entity_list)
             if len(villager_list) > 0:
                 db.insert_villager_records(villager_list)
-            if len(carried_list) > 0:
-                db.insert_carried_items_records(carried_list)
+            if len(item_list) > 0:
+                db.insert_items_records(item_list)
             if len(modifier_list) > 0:
                 db.insert_item_modifiers_records(modifier_list)
 
 def process_player(player, db):
-    carried_list = []
+    item_list = []
     entity_list = []
     villager_list = []
     modifier_list = []
     vehicle = player.get_vehicle()
     if vehicle and 'Entity' in vehicle:
         entity = vehicle['Entity']
-        process_entity(entity, entity_list, carried_list, villager_list, modifier_list)
+        process_entity(entity, entity_list, item_list, villager_list, modifier_list)
     pos = player.position
     entity_list.append({
         'Id': player.uuid,
@@ -228,12 +329,12 @@ def process_player(player, db):
             elif slot == -106:
                 container = 'hand'
                 slot = 0
-        i = process_item(item, player.uuid, container, carried_list, modifier_list, slot)
+        i = process_item(item, player.uuid, pos, container, None, item_list, modifier_list, slot)
 
     if len(entity_list) > 0:
         db.insert_entity_records(entity_list)
-    if len(carried_list) > 0:
-        db.insert_carried_items_records(carried_list)
+    if len(item_list) > 0:
+        db.insert_items_records(item_list)
     if len(villager_list) > 0:
         db.insert_villager_records(villager_list)
     if len(modifier_list) > 0:
@@ -252,4 +353,5 @@ if __name__ == '__main__':
     player = Player(worldpath)
     region = player.get_region()
     process_player(player, db)
-    process_region(region, db)
+    process_regions(region, db)
+    process_entities(region, db)

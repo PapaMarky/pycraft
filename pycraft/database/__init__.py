@@ -4,6 +4,8 @@ Load Minecraft data into a relational database to simplify subsequent data queri
 import sqlalchemy as db
 
 class Database():
+    _RECORD_ID = 0
+
     def __init__(self, dbfile):
         self._engine = db.create_engine(f'sqlite:///{dbfile}')
         self._connection = self._engine.connect()
@@ -11,14 +13,18 @@ class Database():
         self._tables = {}
         self._create_tables()
 
+    def next_record_id():
+        Database._RECORD_ID += 1
+        return Database._RECORD_ID
+
     def insert_entity_records(self, records):
         self.insert_records('entities', records)
 
     def insert_villager_records(self, records):
         self.insert_records('villagers', records)
 
-    def insert_carried_items_records(self, records):
-        self.insert_records('carried_items', records)
+    def insert_items_records(self, records):
+        self.insert_records('items', records)
 
     def insert_item_modifiers_records(self, records):
         self.insert_records('item_modifiers', records)
@@ -27,16 +33,21 @@ class Database():
         query = db.insert(self._tables[table])
         ResultProxy = self._connection.execute(query, records)
 
-    def _create_carried_item_table(self):
-        carried_items = db.Table(
-            'carried_items', self._metadata,
-            db.Column('Owner', db.String(32), nullable=False),
-            db.Column('Container', db.String(32), nullable=False), # chest, hand, armor, ...
+    def _create_item_table(self):
+        items = db.Table(
+            'items', self._metadata,
+            db.Column('Id', db.Integer(), nullable=False),
+            db.Column('Owner', db.String(32)),
+            db.Column('Container', db.String(32)), # chest, hand, armor, ...
+            db.Column('container_item', db.Integer()),
+            db.Column('x', db.Integer(), nullable=False),
+            db.Column('y', db.Integer(), nullable=False),
+            db.Column('z', db.Integer(), nullable=False),
             db.Column('type', db.String(32), nullable=False),
             db.Column('count', db.Integer(), nullable=False),
             db.Column('slot', db.Integer(), nullable=False)
         )
-        self._tables['carried_items'] = carried_items
+        self._tables['items'] = items
 
     def _create_entity_table(self):
         entities = db.Table(
@@ -57,9 +68,7 @@ class Database():
     def _create_item_modifiers_table(self):
         item_modifiers = db.Table(
             'item_modifiers', self._metadata,
-            db.Column('Owner', db.String(32), nullable=False),
-            db.Column('Container', db.String(32), nullable=False),
-            db.Column('slot', db.Integer(), nullable=False),
+            db.Column('item_id', db.Integer(), nullable=False),
             db.Column('modifier', db.String(32), nullable=False),
             db.Column('value', db.Integer(), nullable=False),
             db.Column('type', db.String(32))
@@ -83,6 +92,6 @@ class Database():
     def _create_tables(self):
         self._create_entity_table()
         self._create_villager_table()
-        self._create_carried_item_table()
+        self._create_item_table()
         self._create_item_modifiers_table()
         self._metadata.create_all(self._engine)
