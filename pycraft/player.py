@@ -1,6 +1,9 @@
 import os
 import python_nbt.nbt as nbt
 import glob
+import json
+import logging
+import requests
 
 from math import floor
 
@@ -28,6 +31,25 @@ class Player:
         self._nbt_data = nbt.read_from_nbt_file(self._path)
         self._world_path = world_path
         self._region = None
+        self._username = None
+
+    def get_username(uuid):
+        import base64
+        r = requests.get(f'https://sessionserver.mojang.com/session/minecraft/profile/{uuid}')
+        name = None
+        metadata = {}
+        if r.ok:
+            data = r.json()
+            name = data.get('name', 'UNKNOWN')
+            # There are other things (skin.png, cape.png) that you can get
+            # See https://wiki.vg/Mojang_API#UUID_to_Name_History
+            # for p in data['properties']:
+            #     print(f'---{p["name"]}---')
+            #     metadata[p['name']] = json.loads(base64.b64decode(p['value']))
+            #     print(f'{metadata}')
+        else:
+            name = 'ERROR'
+        return name
 
     def get_attr_list(self):
         return list(self._nbt_data)
@@ -64,3 +86,9 @@ class Player:
     @property
     def uuid(self):
         return self._uuid
+
+    @property
+    def username(self):
+        if self._username is None:
+            self._username = Player.get_username(self.uuid)
+        return self._username
