@@ -2,10 +2,11 @@
 Load Minecraft data into a relational database to simplify subsequent data queries
 '''
 import sqlalchemy as db
+import threading
 
 class Database():
     _RECORD_ID = 0
-
+    _RECORD_ID_LOCK = threading.Lock()
     def __init__(self, dbfile):
         self._engine = db.create_engine(f'sqlite:///{dbfile}')
         self._connection = self._engine.connect()
@@ -14,8 +15,9 @@ class Database():
         self._create_tables()
 
     def next_record_id():
-        Database._RECORD_ID += 1
-        return Database._RECORD_ID
+        with Database._RECORD_ID_LOCK:
+            Database._RECORD_ID += 1
+            return Database._RECORD_ID
 
     def insert_entity_records(self, records):
         self.insert_records('entities', records)
