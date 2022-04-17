@@ -1,8 +1,11 @@
 import argparse
+import concurrent.futures
 import json
 import logging
 import os
+import queue
 import sys
+import threading
 
 from pycraft import __version__ as pycraft_version
 from pycraft import Chunk
@@ -24,10 +27,12 @@ from pycraft.entity import EntityFactory
 # ITEM: {'Slot': 103, 'id': 'minecraft:golden_helmet', 'Count': 1, 'tag': {'Damage': 9, 'Enchantments': [{'lvl': 3, 'id': 'minecraft:respiration'}]
 
 def parse_args():
+    DEF_THREADS = 10
     parser = argparse.ArgumentParser(description='Import minecraft data into queryable database')
     parser.add_argument('dbfile', type=str, help='Database file')
     parser.add_argument('--worldpath', '-w', type=str, default=None, help='Path to saved world')
     parser.add_argument('--loglevel', '-l', type=str, default='INFO', help='Log level: DEBUG, INFO, WARN, ERROR')
+    parser.add_argument('--threads', '-t', type=int, default=10, help=f'Number of threads to run. [default {DEF_THREADS}]')
     return parser.parse_args()
 
 def get_value(v):
@@ -56,8 +61,8 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
             imp = ('map', 'Enchantments', 'Damage', 'RepairCost', 'display', 'StoredEnchantments', 'Potion')
             for x in t:
                 if not x in imp:
-                    print(f'Item Tag ({item_type}): {item["tag"]}')
-                    print(x)
+                    logging.warning(f'Item Tag ({item_type}): {item["tag"]}')
+                    logging.warning(x)
             if 'Damage' in t:
                 damage = get_value(t['Damage'])
                 modifier_list.append({
@@ -224,7 +229,7 @@ def process_entity(entity, entity_list, item_list, villager_list, modifier_list)
 
 def process_entity_items(entity, item_list, modifier_list):
     if 'Items' in entity and len(entity['Items']) > 0:
-        print(f'--- ENTITY: {entity["id"].value[10:]} ({entity["x"].value}, {entity["y"].value}, {entity["z"].value})')
+        logging.info(f'--- ENTITY: {entity["id"].value[10:]} ({entity["x"].value}, {entity["y"].value}, {entity["z"].value})')
         x = y = z = None
         if 'Pos' in entity:
             p = entity['Pos']
@@ -249,17 +254,18 @@ def process_entity_items(entity, item_list, modifier_list):
             if t == 'RecipesUsed':
                 n = len(entity[t])
                 if n > 0:
-                    print(f'{"RecipesUsed":>10}: ({len(entity[t])})')
+                    logging.info(f'{"RecipesUsed":>10}: ({len(entity[t])})')
                     for r in entity[t]:
-                        print(f'{r[10:]:>15}: {entity[t][r].value}')
+                        logging.info(f'{r[10:]:>15}: {entity[t][r].value}')
             elif t == 'Items':
                 for item in entity[t].value:
                     process_item(item, None, pos, entity['id'].value[10:], fake_item_id, item_list, modifier_list)
                     # print(f'{"Slot":>10} {item["Slot"].value}: {item["id"].value[10:]} ({item["Count"].value})')
             else:
-                print(f'{t:>10}: {entity[t].value}')
+                logging.info(f'{t:>10}: {entity[t].value}')
 
 def process_regions(region, db):
+    logging.info(f'Processing Region data for region {region.pos}...')
     item_list = []
     modifier_list = []
     for cx in range(Chunk.BLOCK_WIDTH):
@@ -277,6 +283,7 @@ def process_regions(region, db):
         db.insert_item_modifiers_records(modifier_list)
 
 def process_entities(region, db):
+    logging.info(f'Processing entities for region {region.pos}...')
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
             # print(f'Loading chunk {cx}, {cy}...')
@@ -299,6 +306,7 @@ def process_entities(region, db):
                 db.insert_item_modifiers_records(modifier_list)
 
 def process_player(player, db):
+    logging.info('Processing Player data...')
     item_list = []
     entity_list = []
     villager_list = []
@@ -347,8 +355,69 @@ def setup_logging(args):
     level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(level, int):
         raise ValueError(f'Invalid log level: {level}')
-    lformat = '%(levelname)s:%(asctime)s:%(message)s'
+    lformat = '%(levelname)s:%(asctime)s:%(threadName)s:%(message)s'
     logging.basicConfig(level=level, format=lformat)
+
+def thread_launcher(**kwargs):
+    logging.info('Launch Thread')
+    me = threading.current_thread()
+    base_name = me.name
+    q = kwargs.get('queue', None)
+    if q is None:
+        logging.error('Queue was not passed into thread launcher')
+        return False
+
+    dbfile = kwargs.get('dbfile', None)
+    if dbfile is None:
+        logging.error('Database file path not passed into thread launcher')
+        return False
+
+    db = Database(dbfile)
+    while True:
+        if q.empty():
+            logging.info('No more Tasks')
+            return True
+        task = q.get()
+        cmd = task.get('cmd', None)
+        data = task.get('data', None)
+        taskname = f'{cmd}' if cmd == 'player' else f'{cmd}{data.pos}'
+        logging.info(f'START TASK: {taskname}')
+        if cmd and data:
+            cmdmap = {
+                'player': process_player,
+                'regions': process_regions,
+                'entities': process_entities
+            }
+            if not cmd in cmdmap:
+                logging.error(f'BAD CMD: {cmd}')
+            else:
+                # rename the thread to something useful
+                me.name = taskname
+                cmdmap[cmd](data, db)
+                logging.info(f'TASK COMPLETE')
+                me.name = base_name
+
+            q.task_done()
+
+    return True
+
+def setup_database(dbfile):
+    '''
+    Force the tables to all be created before accessing via threads.
+    '''
+    if os.path.exists(dbfile):
+        logging.warning('DB file exists. Deleting')
+        os.remove(dbfile)
+    db = Database(args.dbfile)
+
+def load_queue(worldpath):
+    q = queue.Queue()
+    player = Player(worldpath)
+    region = player.get_region()
+    q.put({'cmd': 'player', 'data': player})
+    q.put({'cmd': 'regions', 'data': region})
+    q.put({'cmd': 'entities', 'data': region})
+    return q
 
 if __name__ == '__main__':
     args = parse_args()
@@ -362,14 +431,17 @@ if __name__ == '__main__':
         raise Exception('World path must be specified on commandline (--worldpath) or via environment var WORLDPATH')
     if not os.path.isdir(worldpath):
         raise Exception(f'Specified world path does not exist: "{worldpath}"')
-    if os.path.exists(args.dbfile):
-        logging.warning('DB file exists. Deleting')
-        os.remove(args.dbfile)
-    db = Database(args.dbfile)
+    setup_database(args.dbfile)
 
-    # For starters, only process the player's region
-    player = Player(worldpath)
-    region = player.get_region()
-    process_player(player, db)
-    process_regions(region, db)
-    process_entities(region, db)
+    q = load_queue(worldpath)
+
+    threads = []
+    for i in range(args.threads):
+        t = threading.Thread(target=thread_launcher, name=f'worker{i:02}', kwargs={'queue': q, 'dbfile': args.dbfile})
+        t.start()
+        threads.append(t)
+
+    # wait for all of the threads to complete
+    for t in threads:
+        t.join()
+    logging.info('All Done')
