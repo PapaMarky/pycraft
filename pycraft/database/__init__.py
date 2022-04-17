@@ -31,12 +31,26 @@ class Database():
     def insert_item_modifiers_records(self, records):
         self.insert_records('item_modifiers', records)
 
+    def insert_poi_records(self, records):
+        self.insert_records('poi', records)
+
     def insert_records(self, table, records):
         connection = self._engine.connect()
         table_obj = self._metadata.tables[table]
         query = db.insert(table_obj)
         ResultProxy = connection.execute(query, records)
 
+    def _create_poi_table(self):
+        logging.info('Create POI Table')
+        poi = db.Table(
+            'poi', self._metadata,
+            db.Column('x', db.Integer(), nullable=False),
+            db.Column('y', db.Integer(), nullable=False),
+            db.Column('z', db.Integer(), nullable=False),
+            db.Column('type', db.String(32), nullable=False),
+            db.Column('free', db.Integer(), nullable=False),
+            keep_existing=True
+        )
     def _create_item_table(self):
         logging.info('Create Items Table')
         items = db.Table(
@@ -102,5 +116,6 @@ class Database():
         self._create_villager_table()
         self._create_item_table()
         self._create_item_modifiers_table()
+        self._create_poi_table()
         self._metadata.create_all(checkfirst=True)
         self._metadata.reflect()
