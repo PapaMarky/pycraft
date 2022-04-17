@@ -71,3 +71,7 @@ class Region(McaFile):
     @property
     def filename(self):
         return self._fname
+
+    @property
+    def pos(self):
+        return self._pos
