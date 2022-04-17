@@ -362,6 +362,9 @@ if __name__ == '__main__':
         raise Exception('World path must be specified on commandline (--worldpath) or via environment var WORLDPATH')
     if not os.path.isdir(worldpath):
         raise Exception(f'Specified world path does not exist: "{worldpath}"')
+    if os.path.exists(args.dbfile):
+        logging.warning('DB file exists. Deleting')
+        os.remove(args.dbfile)
     db = Database(args.dbfile)
 
     # For starters, only process the player's region
