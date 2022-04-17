@@ -264,13 +264,47 @@ def process_entity_items(entity, item_list, modifier_list):
             else:
                 logging.info(f'{t:>10}: {entity[t].value}')
 
+def process_poi(region, db):
+    logging.info(f'Processing POI data for region {region.pos}...')
+    poi_list = []
+    for cx in range(Chunk.BLOCK_WIDTH):
+        for cy in range(Chunk.BLOCK_WIDTH):
+            poi_chunk = region.get_chunk('poi', cx, cy)
+            if poi_chunk:
+                logging.debug(f'Loading poi chunk {cx}, {cy}...')
+                sections = poi_chunk.get_tag('Sections')
+                if sections is None:
+                    continue
+                for sec in sections:
+                    # v = sections[sec]['Valid'].value
+                    recs = sections[sec]['Records']
+                    for rec in recs:
+                        pos = rec['pos'].value
+                        free_tickets = rec['free_tickets'].value
+                        if free_tickets is None:
+                            logging.warning('free_tickets is None')
+                            free_tickets = 0
+                        rtype = rec['type'].value[10:]
+                        poi_list.append({
+                            'x': pos[0],
+                            'y': pos[1],
+                            'z': pos[2],
+                            'type': rtype,
+                            'free': free_tickets
+                        })
+        if len(poi_list) > 0:
+            for p in poi_list:
+                logging.debug(f'POI: {p}')
+            db.insert_poi_records(poi_list)
+            poi_list = []
+
 def process_regions(region, db):
     logging.info(f'Processing Region data for region {region.pos}...')
     item_list = []
     modifier_list = []
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
-            # print(f'Loading chunk {cx}, {cy}...')
+            logging.debug(f'Loading regions chunk {cx}, {cy}...')
             region_chunk = region.get_chunk('region', cx, cy)
             block_entities = region_chunk.get_tag('block_entities')
             for entity in block_entities:
@@ -386,7 +420,8 @@ def thread_launcher(**kwargs):
             cmdmap = {
                 'player': process_player,
                 'regions': process_regions,
-                'entities': process_entities
+                'entities': process_entities,
+                'poi': process_poi
             }
             if not cmd in cmdmap:
                 logging.error(f'BAD CMD: {cmd}')
@@ -417,6 +452,7 @@ def load_queue(worldpath):
     q.put({'cmd': 'player', 'data': player})
     q.put({'cmd': 'regions', 'data': region})
     q.put({'cmd': 'entities', 'data': region})
+    q.put({'cmd': 'poi', 'data': region})
     return q
 
 if __name__ == '__main__':
