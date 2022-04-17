@@ -100,7 +100,7 @@ class Entity():
         '''
         see also colors.get_sheep_color()
         '''
-        return self.get_attribute('Color')
+        return self.get_attributev('Color')
 
     @property
     def custom_name(self):
