@@ -1,8 +1,10 @@
 import argparse
 import json
+import logging
 import os
 import sys
 
+from pycraft import __version__ as pycraft_version
 from pycraft import Chunk
 from pycraft import Database
 from pycraft import Player
@@ -25,6 +27,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Import minecraft data into queryable database')
     parser.add_argument('dbfile', type=str, help='Database file')
     parser.add_argument('--worldpath', '-w', type=str, default=None, help='Path to saved world')
+    parser.add_argument('--loglevel', '-l', type=str, default='INFO', help='Log level: DEBUG, INFO, WARN, ERROR')
     return parser.parse_args()
 
 def get_value(v):
@@ -340,8 +343,20 @@ def process_player(player, db):
     if len(modifier_list) > 0:
         db.insert_item_modifiers_records(modifier_list)
 
+def setup_logging(args):
+    level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(level, int):
+        raise ValueError(f'Invalid log level: {level}')
+    lformat = '%(levelname)s:%(asctime)s:%(message)s'
+    logging.basicConfig(level=level, format=lformat)
+
 if __name__ == '__main__':
     args = parse_args()
+    setup_logging(args)
+    logging.info('******************************')
+    logging.info(f'* START {os.path.basename(sys.argv[0])}')
+    logging.info(f'* pycraft v{pycraft_version}')
+    logging.info('******************************')
     worldpath = args.worldpath if args.worldpath else os.environ.get('WORLDPATH')
     if not worldpath:
         raise Exception('World path must be specified on commandline (--worldpath) or via environment var WORLDPATH')
