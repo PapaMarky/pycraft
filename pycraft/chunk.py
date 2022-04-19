@@ -5,9 +5,10 @@ from pycraft.mca import Mca
 
 class Chunk:
     BLOCK_WIDTH = 32
-    def __init__(self, data):
+    def __init__(self, data, size):
         self._chunk_data = data
         self._tags = None
+        self._size = size
         if self._chunk_data:
             bytedata = io.BytesIO(self._chunk_data)
             self._tags = nbt.read_bytes(bytedata).value
@@ -19,6 +20,10 @@ class Chunk:
         if self._tags:
             return json.dumps(self._tags)
         return '{}'
+
+    @property
+    def size(self):
+        return self._size
 
     @property
     def dataVersion(self):
@@ -59,16 +64,16 @@ class PoiSection():
         return self.get_attribute('Records') or []
 
 class PoiChunk(Chunk):
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, data, size):
+        super().__init__(data, size)
 
     @property
     def sections(self):
         return self.get_tag('Sections') or {}
 
 class EntitiesChunk(Chunk):
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, data, size):
+        super().__init__(data, size)
 
     @property
     def entities(self):
@@ -78,8 +83,8 @@ class EntitiesChunk(Chunk):
         return self.get_tag('Position')
 
 class RegionChunk(Chunk):
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, data, size):
+        super().__init__(data, size)
 
     @property
     def status(self):

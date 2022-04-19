@@ -5,19 +5,30 @@ import sqlalchemy as db
 import threading
 import logging
 
+DATABASE_LOCK = threading.Lock()
 class Database():
-    _RECORD_ID = 0
-    _RECORD_ID_LOCK = threading.Lock()
-    def __init__(self, dbfile):
-        self._engine = db.create_engine(f'sqlite:///{dbfile}')
-        self._connection = self._engine.connect()
-        self._metadata = db.MetaData(bind=self._engine)
-        self._create_tables()
+    def __init__(self, dbfile, create_tables=True):
+        with DATABASE_LOCK:
+            self._engine = db.create_engine(f'sqlite:///{dbfile}')
+            self._connection = self._engine.connect()
+            self._metadata = db.MetaData(bind=self._engine)
+        if create_tables:
+            self._create_tables()
+        self._metadata.reflect()
 
-    def next_record_id():
-        with Database._RECORD_ID_LOCK:
-            Database._RECORD_ID += 1
-            return Database._RECORD_ID
+    def next_record_id(self):
+        with DATABASE_LOCK:
+            with self._engine.begin() as connection:
+                table_obj = self._metadata.tables['nextid']
+                query = db.select(table_obj)
+                result = connection.execute(query)
+                rows = result.fetchall()
+                if len(rows) != 1:
+                    raise Exception(f'Next Id has {len(rows)} rows')
+                next_id = rows[0]['next_id']
+                query = db.update(table_obj)
+                connection.execute(query, {'id': 0, 'next_id': next_id + 1})
+                return next_id
 
     def insert_entity_records(self, records):
         self.insert_records('entities', records)
@@ -34,11 +45,27 @@ class Database():
     def insert_poi_records(self, records):
         self.insert_records('poi', records)
 
+    def insert_record(self, table, record):
+        try:
+            with DATABASE_LOCK:
+                with self._engine.begin() as connection:
+                    table_obj = self._metadata.tables[table]
+                    query = db.insert(table_obj)
+                    ResultProxy = connection.execute(query, record)
+        except Exception as e:
+            logging.error(f'Exception inserting records into "{table}": {e}')
+
     def insert_records(self, table, records):
-        connection = self._engine.connect()
-        table_obj = self._metadata.tables[table]
-        query = db.insert(table_obj)
-        ResultProxy = connection.execute(query, records)
+        try:
+            with DATABASE_LOCK:
+                with self._engine.begin() as connection:
+                    table_obj = self._metadata.tables[table]
+                    query = db.insert(table_obj)
+                    ResultProxy = connection.execute(query, records)
+        except Exception as e:
+            logging.error(f'Exception inserting records into "{table}": {e}')
+            for record in records:
+                logging.error(f' - {record}')
 
     def _create_poi_table(self):
         logging.info('Create POI Table')
@@ -85,6 +112,14 @@ class Database():
             keep_existing=True
         )
 
+    def _create_nextid_table(self):
+        logging.info('Create Id Table')
+        nextid = db.Table(
+            'nextid', self._metadata,
+            db.Column('id', db.Integer(), nullable=False),
+            db.Column('next_id', db.Integer(), nullable=False),
+            keep_existing=True
+        )
     def _create_item_modifiers_table(self):
         logging.info('Create Item Modifiers Table')
         item_modifiers = db.Table(
@@ -112,10 +147,14 @@ class Database():
         )
 
     def _create_tables(self):
+        self._metadata.reflect()
         self._create_entity_table()
         self._create_villager_table()
         self._create_item_table()
         self._create_item_modifiers_table()
         self._create_poi_table()
+        self._create_nextid_table()
         self._metadata.create_all(checkfirst=True)
         self._metadata.reflect()
+        # initialize id table
+        self.insert_record('nextid', {'id': 0, 'next_id': 1})

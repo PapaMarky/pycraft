@@ -45,12 +45,10 @@ class Region(McaFile):
         y = floor(cy)%32
         data = self.get_data(dtype)
         d = data.get_data(x, y)
-        if d:
-            bytedata = io.BytesIO(d)
-            tags = nbt.read_bytes(bytedata)
         if data:
+            size = data.get_data_size(x, y)
             chunk_class = {'poi': PoiChunk, 'entities': EntitiesChunk, 'region': RegionChunk}
-            return chunk_class[dtype](d)
+            return chunk_class[dtype](d, size)
         return None
 
     def get_data(self, dtype):

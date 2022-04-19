@@ -4,27 +4,30 @@ import json
 import logging
 import os
 import queue
+import signal
 import sys
 import threading
+import traceback
 
 from pycraft import __version__ as pycraft_version
 from pycraft import Chunk
 from pycraft import Database
 from pycraft import Player
+from pycraft import Region
+from pycraft import World
+from pycraft.util import ElapsedTime
 from pycraft.colors import get_sheep_color
 from pycraft.entity import EntityFactory
 
-### NOTES
-# Items can have "tags": 'Damage', 'RepairCost', 'Enchantments', etc
-# ------------------------------
-# ITEM: {'Slot': 30, 'id': 'minecraft:iron_axe', 'Count': 1, 'tag': {'Damage': 111, 'RepairCost': 0}}
-# ITEM: {'Slot': 32, 'id': 'minecraft:black_wool', 'Count': 64}
-# ITEM: {'Slot': 34, 'id': 'minecraft:torch', 'Count': 16}
-# ITEM: {'Slot': 35, 'id': 'minecraft:smooth_stone_slab', 'Count': 43}
-# ITEM: {'Slot': 100, 'id': 'minecraft:golden_boots', 'Count': 1, 'tag': {'Damage': 15, 'Enchantments': [{'lvl': 3, 'id': 'minecraft:depth_strider'}]}}
-# ITEM: {'Slot': 101, 'id': 'minecraft:leather_leggings', 'Count': 1, 'tag': {'Damage': 0, 'display': {'color': 12687579}}}
-# ITEM: {'Slot': 102, 'id': 'minecraft:iron_chestplate', 'Count': 1, 'tag': {'Damage': 45, 'Enchantments': [{'lvl': 3, 'id': 'minecraft:fire_protection'}]}}
-# ITEM: {'Slot': 103, 'id': 'minecraft:golden_helmet', 'Count': 1, 'tag': {'Damage': 9, 'Enchantments': [{'lvl': 3, 'id': 'minecraft:respiration'}]
+SHUTTING_DOWN=False
+
+def shutdown_handler(signum, frame):
+    global SHUTTING_DOWN
+    if not SHUTTING_DOWN:
+        logging.warning(f'Got signal {signum}. Shutting down.')
+        SHUTTING_DOWN=True
+
+signal.signal(signal.SIGINT, shutdown_handler)
 
 def parse_args():
     DEF_THREADS = 10
@@ -32,13 +35,14 @@ def parse_args():
     parser.add_argument('dbfile', type=str, help='Database file')
     parser.add_argument('--worldpath', '-w', type=str, default=None, help='Path to saved world')
     parser.add_argument('--loglevel', '-l', type=str, default='INFO', help='Log level: DEBUG, INFO, WARN, ERROR')
-    parser.add_argument('--threads', '-t', type=int, default=10, help=f'Number of threads to run. [default {DEF_THREADS}]')
+    parser.add_argument('--threads', '-t', type=int, default=10, help=f'Number of threads to run. [default {DEF_THREADS}]. More than a 100 may require you to increase the open file limit using "ulimit -n NUM" on Linux')
+    parser.add_argument('--playeronly', '-p', help='Load only data for the player\'s region. (default is to load all data for all regions)', action='store_true')
     return parser.parse_args()
 
 def get_value(v):
     return v.value if str(type(v).__name__).startswith('NBT') else v
 
-def process_item(item, owner, pos, container, container_id, item_list, modifier_list, slot=None, debug=False):
+def process_item(item, owner, pos, container, container_id, item_list, modifier_list, db, slot=None, debug=False):
     if slot is None and not 'Slot' in item:
         return None
     slot = slot if slot is not None else item['Slot'].value
@@ -52,18 +56,41 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
     if 'id' in item and 'Count' in item:
         item_type = get_value(item['id'])[10:]
         count = item['Count'] if isinstance(item['Count'], int) else item['Count'].value
-        item_id = Database.next_record_id()
+        item_id = db.next_record_id()
         damage = None
         repair_cost = None
         if 'tag' in item:
             t = item['tag']
             # Item Tag (filled_map): {'type_id': 10, 'value': {'map': {'type_id': 3, 'value': 131}}}
-            imp = ('map', 'Enchantments', 'Damage', 'RepairCost', 'display', 'StoredEnchantments', 'Potion')
+            imp = ('map', 'Enchantments', 'Damage', 'RepairCost', 'display', 'StoredEnchantments', 'Potion', 'Effects', 'Decorations')
             for x in t:
                 if not x in imp:
-                    logging.warning(f'Item Tag ({item_type}): {item["tag"]}')
+                    logging.warning(f'Item Tag (in {item_type}: "{x}"): {t}')
                     logging.warning(x)
-            if 'Damage' in t:
+            if 'Decorations' in t:
+                for decoration in t['Decorations']:
+                    dec_id = f'decoration_{decoration.get("id").value}'
+                    for dec in decoration:
+                        if dec != 'id':
+                            mod = {
+                                'item_id': item_id,
+                                'modifier': dec_id,
+                                'value': decoration[dec].value,
+                                'type': dec
+                            }
+                            modifier_list.append(mod)
+
+            elif 'Effects' in t:
+                effects = get_value(t['Effects'])
+                for effect in effects:
+                    if 'EffectId' in effect and 'EffectDuration' in effect:
+                        modifier_list.append({
+                            'item_id': item_id,
+                            'modifier': 'effect',
+                            'value': effect['EffectDuration'].value,
+                            'type': effect['EffectId'].value
+                        })
+            elif 'Damage' in t:
                 damage = get_value(t['Damage'])
                 modifier_list.append({
                     'item_id': item_id,
@@ -97,13 +124,25 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
                     })
                 if 'Name' in t['display']:
                     name = get_value(t['display']['Name'])
-                    name = json.loads(name)['text']
-                    modifier_list.append({
-                        'item_id': item_id,
-                        'modifier': 'name',
-                        'value': 0,
-                        'type': name
-                    })
+                    data = json.loads(name)
+                    if 'name' in data:
+                        name = data['name']
+                        modifier_list.append({
+                            'item_id': item_id,
+                            'modifier': 'name',
+                            'value': 0,
+                            'type': name
+                        })
+                    elif 'translate' in data:
+                        name = data['translate']
+                        modifier_list.append({
+                            'item_id': item_id,
+                            'modifier': 'name',
+                            'value': 0,
+                            'type': name
+                        })
+                    else:
+                        logging.warning(f'No text in Display Tag: {t["display"]}')
             if 'Potion' in t:
                 potion = t['Potion']
                 potion_type = get_value(potion)
@@ -135,7 +174,7 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
                             'value': value,
                             'type': enchant_type[10:] if enchant_type.startswith('minecraft:') else enchant_type
                         })
-        item_list.append({
+        item = {
             'Id': item_id,
             'Owner': owner,
             'Container': container,
@@ -146,10 +185,12 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
             'type': item_type,
             'count': count,
             'slot': slot
-        })
+        }
+        logging.info(f'Item: {item}')
+        item_list.append(item)
         return item_id
 
-def process_entity(entity, entity_list, item_list, villager_list, modifier_list):
+def process_entity(entity, entity_list, item_list, villager_list, modifier_list, db):
     e = EntityFactory(entity)
     pos = e.position
     color = get_sheep_color(e.color)
@@ -165,7 +206,7 @@ def process_entity(entity, entity_list, item_list, villager_list, modifier_list)
         slot = 0
         for item in items:
             # print(f'ArmorItem: {item}')
-            process_item(item, uuid, pos, 'armor', None, item_list, modifier_list, slot)
+            process_item(item, uuid, pos, 'armor', None, item_list, modifier_list, db, slot)
             slot += 1
     ## HandItems
     items = e.get_attributev('HandItems')
@@ -173,16 +214,16 @@ def process_entity(entity, entity_list, item_list, villager_list, modifier_list)
         slot = 0
         for item in items:
             # print(f'HandItem: {item}')
-            process_item(item, uuid, pos, 'hand', None, item_list, modifier_list, slot)
+            process_item(item, uuid, pos, 'hand', None, item_list, modifier_list, db, slot)
             slot += 1
     ## Items (chest)
     items = e.get_attributev('Items')
     if items:
         # Create an item for the entity itself
         fake_item = {'id': 'minecraft:' + e.id, 'Count': 1}
-        chest_id = process_item(fake_item, uuid, pos, 'entity', None, item_list, modifier_list, 0)
+        chest_id = process_item(fake_item, uuid, pos, 'entity', None, item_list, modifier_list, db, 0)
         for item in items:
-            process_item(item, uuid, pos, e.id, chest_id, item_list, modifier_list)
+            process_item(item, uuid, pos, e.id, chest_id, item_list, modifier_list, db)
 
     # Item (contents of "item_frame" or "item")
     # 'item': a pile of things
@@ -191,13 +232,13 @@ def process_entity(entity, entity_list, item_list, villager_list, modifier_list)
     if item:
         # Create an item for the entity itself
         fake_item = {'id': 'minecraft:' + e.id, 'Count': 1}
-        entity_id = process_item(fake_item, uuid, pos, 'entity', None, item_list, modifier_list, 0)
-        process_item(item, None, pos, e.id, entity_id, item_list, modifier_list, 0)
+        entity_id = process_item(fake_item, uuid, pos, 'entity', None, item_list, modifier_list, db, 0)
+        process_item(item, None, pos, e.id, entity_id, item_list, modifier_list, db, 0)
 
     # SaddleItem: {'type_id': 10, 'value': {'id': {'type_id': 8, 'value': 'minecraft:saddle'}, 'Count': {'type_id': 1, 'value': 1}}}
     item = e.get_attributev('SaddleItem')
     if item:
-        process_item(item, uuid, pos, 'saddle', None, item_list, modifier_list, 0)
+        process_item(item, uuid, pos, 'saddle', None, item_list, modifier_list, db, 0)
 
     entity_list.append(
         {
@@ -227,7 +268,7 @@ def process_entity(entity, entity_list, item_list, villager_list, modifier_list)
                 'meet_z': meet[2]
             })
 
-def process_entity_items(entity, item_list, modifier_list):
+def process_entity_items(entity, item_list, modifier_list, db):
     if 'Items' in entity and len(entity['Items']) > 0:
         logging.info(f'--- ENTITY: {entity["id"].value[10:]} ({entity["x"].value}, {entity["y"].value}, {entity["z"].value})')
         x = y = z = None
@@ -245,7 +286,9 @@ def process_entity_items(entity, item_list, modifier_list):
             'id': entity['id'],
             'Count': 1
         }
-        fake_item_id = process_item(fake_item, None, pos, '', None, item_list, modifier_list, 0)
+        fake_item_id = process_item(fake_item, None, pos, '', None, item_list, modifier_list, db, 0)
+        if fake_item_id is not None:
+            logging.info(f'Fake Entity Item: {item_list[-1:][0]}')
         for t in entity:
             # Display information about unrecognized tags ("ignore" the ones we know about)
             ignore = ('id', 'keepPacked', 'x', 'y', 'z', 'CookTime', 'BurnTime', 'CookTimeTotal', 'TransferCooldown', 'StoredEnchantments', 'Potion')
@@ -259,14 +302,16 @@ def process_entity_items(entity, item_list, modifier_list):
                         logging.info(f'{r[10:]:>15}: {entity[t][r].value}')
             elif t == 'Items':
                 for item in entity[t].value:
-                    process_item(item, None, pos, entity['id'].value[10:], fake_item_id, item_list, modifier_list)
+                    process_item(item, None, pos, entity['id'].value[10:], fake_item_id, item_list, modifier_list, db)
                     # print(f'{"Slot":>10} {item["Slot"].value}: {item["id"].value[10:]} ({item["Count"].value})')
             else:
                 logging.info(f'{t:>10}: {entity[t].value}')
 
 def process_poi(region, db):
     logging.info(f'Processing POI data for region {region.pos}...')
+    et = ElapsedTime()
     poi_list = []
+    count = 0
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
             poi_chunk = region.get_chunk('poi', cx, cy)
@@ -276,9 +321,12 @@ def process_poi(region, db):
                 if sections is None:
                     continue
                 for sec in sections:
+                    if SHUTTING_DOWN:
+                        return
                     # v = sections[sec]['Valid'].value
                     recs = sections[sec]['Records']
                     for rec in recs:
+                        count += 1
                         pos = rec['pos'].value
                         free_tickets = rec['free_tickets'].value
                         if free_tickets is None:
@@ -293,31 +341,44 @@ def process_poi(region, db):
                             'free': free_tickets
                         })
         if len(poi_list) > 0:
-            for p in poi_list:
-                logging.debug(f'POI: {p}')
+            logging.info(f'adding {len(poi_list)} POIs')
             db.insert_poi_records(poi_list)
             poi_list = []
+    logging.info(f'Processed {count} poi records ({et.elapsed_time_str()})')
 
 def process_regions(region, db):
     logging.info(f'Processing Region data for region {region.pos}...')
+    et = ElapsedTime()
     item_list = []
     modifier_list = []
+    count = 0
+    total_size = 0
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
-            logging.debug(f'Loading regions chunk {cx}, {cy}...')
+            if SHUTTING_DOWN:
+                return
             region_chunk = region.get_chunk('region', cx, cy)
+            total_size += region_chunk.size
             block_entities = region_chunk.get_tag('block_entities')
-            for entity in block_entities:
-                process_entity_items(entity, item_list, modifier_list)
-    if len(item_list) > 0:
-        db.insert_items_records(item_list)
-    if len(modifier_list) > 0:
-        # for mod in modifier_list:
-        #     print(f'MOD: {mod}')
-        db.insert_item_modifiers_records(modifier_list)
+            if block_entities:
+                logging.info(f'Loading regions block_entities from chunk {cx}, {cy}... (chunk size: {region_chunk.size})')
+                for entity in block_entities:
+                    count += 1
+                    process_entity_items(entity, item_list, modifier_list, db)
+        if len(item_list) > 0:
+            logging.info(f'adding {len(item_list)} items')
+            db.insert_items_records(item_list)
+            item_list = []
+        if len(modifier_list) > 0:
+            logging.info(f'adding {len(modifier_list)} modifiers')
+            db.insert_item_modifiers_records(modifier_list)
+            modifier_list = []
+    logging.info(f'Processed {count} block entities in region. TOTAL SIZE: {total_size} TIME: {et.elapsed_time_str()}, {total_size/et.get_elapsed_time():.0f} BPS')
 
 def process_entities(region, db):
     logging.info(f'Processing entities for region {region.pos}...')
+    et = ElapsedTime()
+    count = 0
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
             # print(f'Loading chunk {cx}, {cy}...')
@@ -328,19 +389,32 @@ def process_entities(region, db):
             item_list = []
             modifier_list = []
             for entity in entities:
-                process_entity(entity, entity_list, item_list, villager_list, modifier_list)
+                if SHUTTING_DOWN:
+                    return
+                count += 1
+                process_entity(entity, entity_list, item_list, villager_list, modifier_list, db)
 
             if len(entity_list) > 0:
+                logging.info(f'adding {len(entity_list)} entities')
                 db.insert_entity_records(entity_list)
+                entity_list = []
             if len(villager_list) > 0:
+                logging.info(f'adding {len(villager_list)} villagers')
                 db.insert_villager_records(villager_list)
+                villager_list = []
             if len(item_list) > 0:
+                logging.info(f'adding {len(item_list)} items')
                 db.insert_items_records(item_list)
+                item_list = []
             if len(modifier_list) > 0:
+                logging.info(f'adding {len(modifier_list)} modifiers')
                 db.insert_item_modifiers_records(modifier_list)
+                modifier_list = []
+    logging.info(f'Processed {count} entities in entities data ({et.elapsed_time_str()})')
 
 def process_player(player, db):
     logging.info('Processing Player data...')
+    et = ElapsedTime()
     item_list = []
     entity_list = []
     villager_list = []
@@ -348,7 +422,7 @@ def process_player(player, db):
     vehicle = player.get_vehicle()
     if vehicle and 'Entity' in vehicle:
         entity = vehicle['Entity']
-        process_entity(entity, entity_list, item_list, villager_list, modifier_list)
+        process_entity(entity, entity_list, item_list, villager_list, modifier_list, db)
     pos = player.position
     entity_list.append({
         'Id': player.uuid,
@@ -374,7 +448,7 @@ def process_player(player, db):
             elif slot == -106:
                 container = 'hand'
                 slot = 0
-        i = process_item(item, player.uuid, pos, container, None, item_list, modifier_list, slot)
+        i = process_item(item, player.uuid, pos, container, None, item_list, modifier_list, db, slot)
 
     if len(entity_list) > 0:
         db.insert_entity_records(entity_list)
@@ -384,19 +458,80 @@ def process_player(player, db):
         db.insert_villager_records(villager_list)
     if len(modifier_list) > 0:
         db.insert_item_modifiers_records(modifier_list)
+    logging.info(f'Processed Player data ({et.elapsed_time_str()})')
 
 def setup_logging(args):
     level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(level, int):
         raise ValueError(f'Invalid log level: {level}')
     lformat = '%(levelname)s:%(asctime)s:%(threadName)s:%(message)s'
-    logging.basicConfig(level=level, format=lformat)
+    filename = 'load_database.log'
+    logging.basicConfig(level=level, format=lformat, filename=filename)
+
+def thread_runner(qlen, q, worldpath, dbfile):
+    try:
+        have_task = False
+        cmdmap = {
+            'player': process_player,
+            'regions': process_regions,
+            'entities': process_entities,
+            'poi': process_poi
+        }
+        me = threading.current_thread()
+        base_name = me.name
+        db = Database(dbfile, create_tables=False)
+        while True:
+            if SHUTTING_DOWN:
+                return False
+            if q.empty():
+                logging.info('No more Tasks')
+                return True
+            tasks_remaining = q.qsize()
+            logging.info('Getting next task...')
+            task = q.get()
+            cmd = task.get('cmd', None)
+            data = task.get('data', None)
+            logging.info(f'Got task: {cmd}')
+            have_task = True
+            if cmd and data:
+                if not cmd in cmdmap:
+                    logging.error(f'BAD CMD: {cmd}')
+                else:
+                    # rename the thread to something useful
+                    region = None
+                    if cmd != 'player':
+                        logging.debug(f'DATA: {data}')
+                        pos = data.get('pos', None)
+                        if len(pos) == 2:
+                            data = Region(worldpath, pos[0], pos[1])
+                        elif len(pos) == 3:
+                            x, y = World.pos_to_xy(pos)
+                            data = Region.from_position_xy(worldpath, x, y)
+                    taskname = f'{base_name}.{cmd}' if cmd == 'player' else f'{base_name}.{cmd}{data.pos}'
+                    pct = ((qlen - tasks_remaining) / qlen) * 100
+                    logging.info(f'START TASK: {taskname} ({qlen - tasks_remaining} of {qlen}: {pct:.1f}%)')
+                    me.name = taskname
+                    cmdmap[cmd](data, db)
+                    if SHUTTING_DOWN:
+                        return False
+                    logging.info(f'TASK COMPLETE')
+                    me.name = base_name
+
+    except Exception as e:
+        logging.exception(f'##### WORKER EXCEPTION: {e}')
+        for line in traceback.format_exc().splitlines():
+            logging.error('> ' + line)
+            logging.error(f'TASK FAILED')
+            return False
+    finally:
+        if have_task:
+            q.task_done()
 
 def thread_launcher(**kwargs):
     logging.info('Launch Thread')
-    me = threading.current_thread()
-    base_name = me.name
+    qlen = kwargs.get('qlen', None)
     q = kwargs.get('queue', None)
+    worldpath = kwargs.get('world', None)
     if q is None:
         logging.error('Queue was not passed into thread launcher')
         return False
@@ -406,35 +541,7 @@ def thread_launcher(**kwargs):
         logging.error('Database file path not passed into thread launcher')
         return False
 
-    db = Database(dbfile)
-    while True:
-        if q.empty():
-            logging.info('No more Tasks')
-            return True
-        task = q.get()
-        cmd = task.get('cmd', None)
-        data = task.get('data', None)
-        taskname = f'{cmd}' if cmd == 'player' else f'{cmd}{data.pos}'
-        logging.info(f'START TASK: {taskname}')
-        if cmd and data:
-            cmdmap = {
-                'player': process_player,
-                'regions': process_regions,
-                'entities': process_entities,
-                'poi': process_poi
-            }
-            if not cmd in cmdmap:
-                logging.error(f'BAD CMD: {cmd}')
-            else:
-                # rename the thread to something useful
-                me.name = taskname
-                cmdmap[cmd](data, db)
-                logging.info(f'TASK COMPLETE')
-                me.name = base_name
-
-            q.task_done()
-
-    return True
+    return thread_runner(qlen, q, worldpath, dbfile)
 
 def setup_database(dbfile):
     '''
@@ -445,14 +552,36 @@ def setup_database(dbfile):
         os.remove(dbfile)
     db = Database(args.dbfile)
 
-def load_queue(worldpath):
+def load_queue(worldpath, playeronly):
     q = queue.Queue()
     player = Player(worldpath)
-    region = player.get_region()
     q.put({'cmd': 'player', 'data': player})
-    q.put({'cmd': 'regions', 'data': region})
-    q.put({'cmd': 'entities', 'data': region})
-    q.put({'cmd': 'poi', 'data': region})
+    if playeronly:
+        pos = player.position
+        data = {
+            'pos': pos
+        }
+        q.put({'cmd': 'regions', 'data': {'pos': pos}})
+        q.put({'cmd': 'entities', 'data': {'pos': pos}})
+        q.put({'cmd': 'poi', 'data': {'pos': pos}})
+    else:
+        files = os.listdir(f'{worldpath}/region')
+        # NOTE: mapping the pos to ints is not strictly necessary, but it makes the logs
+        # easier to read
+        for f in files:
+            pos = list(map(int, f.split('.')[1:-1]))
+            logging.debug(f'Adding {f}...{pos}')
+            q.put({'cmd': 'regions', 'data': {'pos': pos}})
+        files = os.listdir(f'{worldpath}/entities')
+        for f in files:
+            pos = list(map(int, f.split('.')[1:-1]))
+            logging.debug(f'Adding {f}...{pos}')
+            q.put({'cmd': 'entities', 'data': {'pos': pos}})
+        files = os.listdir(f'{worldpath}/poi')
+        for f in files:
+            pos = list(map(int, f.split('.')[1:-1]))
+            logging.debug(f'Adding {f}...{pos}')
+            q.put({'cmd': 'poi', 'data': {'pos': pos}})
     return q
 
 if __name__ == '__main__':
@@ -462,6 +591,7 @@ if __name__ == '__main__':
     logging.info(f'* START {os.path.basename(sys.argv[0])}')
     logging.info(f'* pycraft v{pycraft_version}')
     logging.info('******************************')
+    main_et = ElapsedTime()
     worldpath = args.worldpath if args.worldpath else os.environ.get('WORLDPATH')
     if not worldpath:
         raise Exception('World path must be specified on commandline (--worldpath) or via environment var WORLDPATH')
@@ -469,15 +599,20 @@ if __name__ == '__main__':
         raise Exception(f'Specified world path does not exist: "{worldpath}"')
     setup_database(args.dbfile)
 
-    q = load_queue(worldpath)
-
+    q = load_queue(worldpath, args.playeronly)
+    queue_length = q.qsize()
+    logging.info(f'{queue_length} Tasks to perform')
+    if args.threads == 0:
+        args.threads = queue_length
+        logging.info(f'Setting number of threads to {queue_length}')
     threads = []
     for i in range(args.threads):
-        t = threading.Thread(target=thread_launcher, name=f'worker{i:02}', kwargs={'queue': q, 'dbfile': args.dbfile})
+        t = threading.Thread(target=thread_launcher, name=f'w.{i:03}', kwargs={'queue': q, 'dbfile': args.dbfile, 'qlen': queue_length, 'world': worldpath})
         t.start()
         threads.append(t)
 
     # wait for all of the threads to complete
     for t in threads:
-        t.join()
-    logging.info('All Done')
+        while t.is_alive():
+            t.join(1)
+    logging.info(f'All Done (TOTAL ELAPSED TIME: {main_et.elapsed_time_str()}')
