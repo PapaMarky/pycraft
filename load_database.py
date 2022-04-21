@@ -60,6 +60,7 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
         damage = None
         repair_cost = None
         if 'tag' in item:
+            # https://minecraft.fandom.com/wiki/Block_entity
             t = item['tag']
             # Item Tag (filled_map): {'type_id': 10, 'value': {'map': {'type_id': 3, 'value': 131}}}
             imp = ('map', 'Enchantments', 'Damage', 'RepairCost', 'display', 'StoredEnchantments', 'Potion', 'Effects', 'Decorations')
@@ -125,11 +126,11 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
                 if 'Name' in t['display']:
                     name = get_value(t['display']['Name'])
                     data = json.loads(name)
-                    if 'name' in data:
+                    if 'text' in data:
                         name = data['name']
                         modifier_list.append({
                             'item_id': item_id,
-                            'modifier': 'name',
+                            'modifier': 'name-text',
                             'value': 0,
                             'type': name
                         })
@@ -137,12 +138,12 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
                         name = data['translate']
                         modifier_list.append({
                             'item_id': item_id,
-                            'modifier': 'name',
+                            'modifier': 'name-translate',
                             'value': 0,
                             'type': name
                         })
                     else:
-                        logging.warning(f'No text in Display Tag: {t["display"]}')
+                        logging.warning(f'No Name in Display Tag: {t["display"]}')
             if 'Potion' in t:
                 potion = t['Potion']
                 potion_type = get_value(potion)
