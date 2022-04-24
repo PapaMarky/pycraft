@@ -11,10 +11,28 @@ class World:
         self._path = path
         self._player = Player(path)
 
-    def get_map(self, map_num):
-        path = os.path.join(self._path, 'data', f'map_{map_num}.dat')
-        m = Map(path)
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def mappath(self):
+        '''
+        Return path of map file folder.
+
+        Does not indicate the existance of maps
+        '''
+        print(f'path: {self.path}')
+        mp = os.path.join(self.path, 'data')
+        return mp
+
+    def _load_map(self, mappath):
+        m = Map(mappath)
         return m
+
+    def get_map(self, map_num):
+        path = os.path.join(self.mappath, f'map_{map_num}.dat')
+        return self._load_map(path)
 
     def get_region(self, pos):
         x, y = World.pos_to_xy(pos)
