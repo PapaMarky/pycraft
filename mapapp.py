@@ -178,14 +178,14 @@ class GuiApp():
     '''
     Base class for any pygame_gui app
     '''
-    def __init__(self, appsize, title=None, flags=pygame.RESIZABLE):
+    def __init__(self, appsize, title=None, flags=0):
         '''
         Create a GuiApp
 
         Parameters:
         appsize: how big to make the root window
         title:   Title of the window
-        flags:   pygame flags to pass into pygame.display.set_mode
+        flags:   pygame flags to pass into pygame.display.set_mode (pygame.RESIZABLE)
         '''
         self.title = title
         self._size = appsize
