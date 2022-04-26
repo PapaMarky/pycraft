@@ -14,7 +14,8 @@ class Database():
             self._metadata = db.MetaData(bind=self._engine)
         if create_tables:
             self._create_tables()
-        self._metadata.reflect()
+        with DATABASE_LOCK:
+            self._metadata.reflect()
 
     def next_record_id(self):
         with DATABASE_LOCK:
