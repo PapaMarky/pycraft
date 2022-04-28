@@ -1,17 +1,19 @@
 import io
 import json
+
 from pycraft import nbt
-from pycraft.mca import Mca
+
 
 class Chunk:
     BLOCK_WIDTH = 32
+
     def __init__(self, data, size):
         self._chunk_data = data
         self._tags = None
         self._size = size
         if self._chunk_data:
-            bytedata = io.BytesIO(self._chunk_data)
-            self._tags = nbt.read_bytes(bytedata).value
+            byte_data = io.BytesIO(self._chunk_data)
+            self._tags = nbt.read_bytes(byte_data).value
 
     def get_tags(self):
         return self._tags
@@ -26,7 +28,7 @@ class Chunk:
         return self._size
 
     @property
-    def dataVersion(self):
+    def data_version(self):
         return self.get_tag('DataVersion')
 
     def get_tag(self, tag):
@@ -43,25 +45,28 @@ class Chunk:
         for tag in self._tags:
             print(tag)
 
-class PoiSection():
-    '''
-    Wrapper for Poi Chunck Section
-    '''
+
+class PoiSection:
+    """
+    Wrapper for Poi Chunk Section
+    """
+
     def __init__(self, section):
         self._section = section
 
-    def get_attribute(self, attrname):
-        return self._section[attrname] if attrname in self._section else None
+    def get_attribute(self, attribute_name: str):
+        return self._section[attribute_name] if attribute_name in self._section else None
 
     def get_attribute_list(self):
-        alist = []
+        attribute_list = []
         for a in self._section:
-            alist.append(a)
-        return alist
+            attribute_list.append(a)
+        return attribute_list
 
     @property
     def records(self):
         return self.get_attribute('Records') or []
+
 
 class PoiChunk(Chunk):
     def __init__(self, data, size):
@@ -70,6 +75,7 @@ class PoiChunk(Chunk):
     @property
     def sections(self):
         return self.get_tag('Sections') or {}
+
 
 class EntitiesChunk(Chunk):
     def __init__(self, data, size):
@@ -82,19 +88,22 @@ class EntitiesChunk(Chunk):
     def position(self):
         return self.get_tag('Position')
 
+
 class RegionChunk(Chunk):
     def __init__(self, data, size):
         super().__init__(data, size)
 
     @property
     def status(self):
-        self.get_tag('Status')
+        return self.get_tag('Status')
+
     @property
     def position(self):
         x = self.get_tag('xPos')
         y = self.get_tag('yPos')
         z = self.get_tag('zPos')
-        return (x, y ,z)
+        return x, y, z
+
     @property
     def structures(self):
         return self.get_tag('structures')

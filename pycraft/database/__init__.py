@@ -6,6 +6,8 @@ import threading
 import logging
 
 DATABASE_LOCK = threading.Lock()
+
+
 class Database():
     def __init__(self, dbfile, create_tables=True):
         with DATABASE_LOCK:
@@ -79,13 +81,14 @@ class Database():
             db.Column('free', db.Integer(), nullable=False),
             keep_existing=True
         )
+
     def _create_item_table(self):
         logging.info('Create Items Table')
         items = db.Table(
             'items', self._metadata,
             db.Column('Id', db.Integer(), nullable=False, primary_key=True),
             db.Column('Owner', db.String(32)),
-            db.Column('Container', db.String(32)), # chest, hand, armor, ...
+            db.Column('Container', db.String(32)),  # chest, hand, armor, ...
             db.Column('container_item', db.Integer()),
             db.Column('x', db.Integer(), nullable=False),
             db.Column('y', db.Integer(), nullable=False),
@@ -121,6 +124,7 @@ class Database():
             db.Column('next_id', db.Integer(), nullable=False),
             keep_existing=True
         )
+
     def _create_item_modifiers_table(self):
         logging.info('Create Item Modifiers Table')
         item_modifiers = db.Table(

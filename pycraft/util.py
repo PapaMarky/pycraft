@@ -1,37 +1,41 @@
 import time
 
+
 class ElapsedTime:
-    '''
-    Utility class for managing elapsed time of long running functions so that logging can show how long the function took to complete.
+    """
+    Utility class for managing elapsed time of long-running functions so that logging can show how long
+    the function took to complete.
 
     Usage:
-      * Create a ElapsedTime object at the beginning of a long running function,
+      * Create a ElapsedTime object at the beginning of a long-running function,
       * At the end of the function, print output of elapsed_time_str() to show how long it took
       OR
       * Create a ElapsedTime object at the beginning of a function
-      * Call reset() before calling a long running function
+      * Call reset() before calling a long-running function
       * Call elapsed_time_str() after function returns to get elapsed time string
-    '''
+    """
+
     def __init__(self):
+        self._start_time = 0
         self.reset()
 
     def reset(self):
-        '''
+        """
         Reset the elapsed time timer
-        '''
+        """
         self._start_time = time.time()
 
-    def get_elapsed_time(self) -> int:
-        '''
+    def get_elapsed_time(self) -> float:
+        """
         Get the current elapsed time in seconds as an integer.
-        '''
+        """
         return time.time() - self._start_time
 
     def elapsed_time_str(self) -> str:
-        '''
+        """
         Get the current elapsed time as a string: HH:MM:SS
-        '''
-        h = m = s = 0
+        """
+        h = m = 0
         seconds = self.get_elapsed_time()
         if seconds > 3600.0:
             h = int(seconds / 3600.0)

@@ -1,11 +1,11 @@
-import python_nbt.nbt as nbt
 import ctypes
-import json
 
-def EntityFactory(entity):
+
+def entity_factory(entity):
     if 'id' in entity and entity['id'].value in etypes:
         return etypes[entity['id'].value](entity)
     return Entity(entity)
+
 
 class Entity():
     '''
@@ -13,13 +13,15 @@ class Entity():
 
     Tags Info: https://www.digminecraft.com/data_tags/index.php
     '''
+
+    @staticmethod
     def _make_uuid(uuid):
         out = []
         for d in uuid:
             d = ctypes.c_uint(int(d)).value
             out.append(d)
         return f'{out[0]:x}{out[1]:x}{out[2]:x}{out[3]:x}'
-        
+
     def __init__(self, entity):
         self._entity = entity
 
@@ -54,6 +56,8 @@ class Entity():
         m = self.memories
         if m and 'Owner' in m:
             return m['Owner']
+        elif 'Owner' in self._entity:
+            return Entity._make_uuid(self._entity['Owner'].value)
         return None
 
     @property
@@ -80,7 +84,7 @@ class Entity():
                 rval.append(v.value)
             return rval
         return None
-        
+
     @property
     def in_love(self):
         return self.get_attribute('InLove')
@@ -110,24 +114,22 @@ class Entity():
     def passengers(self):
         return self.get_attribute('Passengers')
 
-    @property
-    def owner(self):
-        if 'Owner' in self._entity:
-            return Entity._make_uuid(self._entity['Owner'].value)
-        return None
 
 class PetEntity(Entity):
     def __init__(self, entity):
         super().__init__(entity)
 
+
 class CatEntity(PetEntity):
     def __init__(self, entity):
         super().__init__(entity)
 
+
 class DonkeyEntity(PetEntity):
     def __init__(self, entity):
         super().__init__(entity)
-    
+
+
 class VillagerEntity(Entity):
     def __init__(self, entity):
         super().__init__(entity)
@@ -136,12 +138,12 @@ class VillagerEntity(Entity):
         m = self.memories
         mstr = f'minecraft:{memory}'
         if m and mstr in m:
-            return  m[mstr]['value']
-            
+            return m[mstr]['value']
+
     @property
     def home(self):
         home = self.get_memory('home')
-        
+
         if home:
             return {
                 'pos': home.value['pos'].value,
@@ -171,8 +173,9 @@ class VillagerEntity(Entity):
         if vd:
             return vd['profession'].value
 
+
 etypes = {
     'minecraft:villager': VillagerEntity
-    #'minecraft:cat': CatEntity,
-    #'minecraft:donkey': DonkeyEntity
+    # 'minecraft:cat': CatEntity,
+    # 'minecraft:donkey': DonkeyEntity
 }

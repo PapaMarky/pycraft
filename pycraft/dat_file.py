@@ -1,5 +1,6 @@
 import python_nbt.nbt as nbt
 
+
 class DatFile:
     def __init__(self, path):
         self._path = path

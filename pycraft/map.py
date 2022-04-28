@@ -1,9 +1,11 @@
-
-from pycraft.dat_file import DatFile
-from pycraft.colors import get_map_color
 import json
-import sys
+import math
+
 from PIL import Image
+
+from pycraft.colors import get_map_color
+from pycraft.dat_file import DatFile
+
 
 # info about map scaling:
 # https://minecraft.fandom.com/wiki/Map#Zoom_details
@@ -14,12 +16,12 @@ class Map(DatFile):
         self._banners = None
 
     def get_origin(self):
-        '''
+        """
         return the map origin (x, z) in world (block) coordinates
-        '''
+        """
         c = self.get_center()
         bw = self.width_in_blocks()
-        return (c[0] - (bw / 2.0), c[1] - (bw / 2.0))
+        return c[0] - (bw / 2.0), c[1] - (bw / 2.0)
 
     def get_zoom(self):
         return self._tags['data']['scale'].value
@@ -33,12 +35,12 @@ class Map(DatFile):
             bdata = self._tags['data']['banners'].json_obj(full_json=False)
             for b in bdata:
                 banner = {
-                    'pos': (b['Pos']['X'], b['Pos']['Y'], b['Pos']['Z']), 
-                    'color': b['Color'], 
+                    'pos': (b['Pos']['X'], b['Pos']['Y'], b['Pos']['Z']),
+                    'color': b['Color'],
                     'name': ''}
                 if 'Name' in b:
                     banner['name'] = json.loads(b['Name'])['text']
-                
+
                 self._banners.append(banner)
 
         return self._banners
@@ -46,7 +48,7 @@ class Map(DatFile):
     def get_center(self):
         cx = self._tags['data']['xCenter'].value
         cz = self._tags['data']['zCenter'].value
-        return (cx, cz)
+        return cx, cz
 
     def get_colors(self):
         return self._tags['data']['colors']
@@ -56,7 +58,7 @@ class Map(DatFile):
         lencolors = len(colors)
         width = 128 if lencolors == 16384 else math.sqrt(lencolors)
         return width
-        
+
     def create_image(self, scale=1.0):
         width = self.get_width()
         img = Image.new(mode="RGBA", size=(width, width), color='#00000000')
@@ -68,7 +70,7 @@ class Map(DatFile):
                 try:
                     if color_index != 0:
                         val = get_map_color(color_index)
-                        img.putpixel((x,y), val)
+                        img.putpixel((x, y), val)
                 except Exception as ex:
                     print(f'Exception: {ex}')
                     print(f' - ({x}, {y}) = {offset}')
