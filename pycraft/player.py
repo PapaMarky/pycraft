@@ -1,14 +1,12 @@
-import os
-import python_nbt.nbt as nbt
 import glob
-import json
-import logging
-import requests
+import os
 
-from math import floor
+import python_nbt.nbt as nbt
+import requests
 
 from pycraft.error import PycraftException
 from pycraft.region import Region
+
 
 class Player:
     def __init__(self, world_path):
@@ -33,11 +31,9 @@ class Player:
         self._region = None
         self._username = None
 
+    @staticmethod
     def get_username(uuid):
-        import base64
         r = requests.get(f'https://sessionserver.mojang.com/session/minecraft/profile/{uuid}')
-        name = None
-        metadata = {}
         if r.ok:
             data = r.json()
             name = data.get('name', 'UNKNOWN')
@@ -73,7 +69,7 @@ class Player:
     @property
     def chunk_position(self):
         p = self.position
-        return (int(p[0]/16), int(p[1]/16), int(p[2]/16))
+        return int(p[0] / 16), int(p[1] / 16), int(p[2] / 16)
 
     @property
     def position(self):

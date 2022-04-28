@@ -1,39 +1,33 @@
 import glob
 import os
 from pathlib import Path
-
-import  pycraft
-import pycraft_gui
-
-from pycraft.map import Map
-from pycraft import World
-from pycraft.colors import get_map_color
-
-from typing import List, Union, Tuple, Dict, Any, Callable, Set
+from typing import Union
 
 import pygame
-import pygame_gui
-
-from pygame_gui.ui_manager import UIManager
 from pygame_gui.core.interfaces import IContainerLikeInterface
-from pygame_gui.elements.ui_panel import UIPanel
 from pygame_gui.elements.ui_image import UIImage
+from pygame_gui.elements.ui_panel import UIPanel
+from pygame_gui.ui_manager import UIManager
 
-from pygame.event import custom_type
+import pycraft
+import pycraft_gui
+from pycraft.map import Map
 
 GAP = 10
 
+
 class PycraftMapElement(UIImage):
-    '''
+    """
     Screen object for displaying a single Minecraft map.
-    '''
+    """
+
     def __init__(self,
                  rr: pygame.Rect,
                  manager: UIManager,
                  container: Union[IContainerLikeInterface, None],
                  image_dir: str,
                  pycraft_map: Map):
-        '''
+        """
         Create a PycraftMapElement object. Creates an image using PIL,
         saves the image to a PNG then loads the image into a surface.
 
@@ -46,7 +40,7 @@ class PycraftMapElement(UIImage):
         - container: The continer object.
         - image_dir: directory where temporary map PNG files are stored.
         - pycraft_map: A pycraft.Map object with the map loaded into it
-        '''
+        """
         self._pycraft_map = pycraft_map
         img = pycraft_map.create_image()
         outpath = os.path.join(image_dir, os.path.basename(pycraft_map.path)[:-4] + '.png')
@@ -56,33 +50,35 @@ class PycraftMapElement(UIImage):
         self._width = img.width
 
     def get_origin(self):
-        '''
+        """
         Return the origin of the map in Minecraft world (block) coordinates.
-        '''
+        """
         return self._pycraft_map.get_origin()
 
     @property
     def width(self):
-        '''
+        """
         Width of the image in pixels. The map images are square, so this is also the height.
-        '''
+        """
         return self._width
 
     @property
     def map_file_path(self):
-        '''
+        """
         Path to the map file displayed by this object.
-        '''
+        """
         return self._pycraft_map.path
 
+
 class PycraftMapPanel(UIPanel):
-    '''
+    """
     A UIPanel that holds a grid of maps
 
     Parameters:
     - rr: Relative Rectangle that describes where to put the element on the screen
     - manager: The UI manager object
-    '''
+    """
+
     def __init__(self, rr, manager):
         super().__init__(rr, 0, manager)
         self._tops = []
@@ -93,11 +89,11 @@ class PycraftMapPanel(UIPanel):
             os.makedirs(self._image_dir)
 
     def reset(self):
-        '''
+        """
         Reset the map panel.
 
         Delete all of the existing maps and layout information.
-        '''
+        """
         for e in self._map_elements:
             e.kill()
         self._tops = []
@@ -105,12 +101,12 @@ class PycraftMapPanel(UIPanel):
         self._map_elements = []
 
     def add_map(self, pycraft_map: Map):
-        '''
+        """
         Add a map to the Map Panel.
 
         Parameters:
         - pycraft_map: a pycraft map object
-        '''
+        """
         origin = pycraft_map.get_origin()
 
         map_block_left = origin[0]
@@ -126,12 +122,12 @@ class PycraftMapPanel(UIPanel):
         self._do_layout()
 
     def _do_layout(self):
-        '''
+        """
         Layout the maps in the grid.
 
         As new maps are added to the grid, they existing maps may need to be moved around
         to maintain correct relative position on the screen.
-        '''
+        """
         for m in self._map_elements:
             map_origin = m.get_origin()
             # Adding one to m.width leaves a one pixel gap between the maps
@@ -157,54 +153,56 @@ class PycraftMapPanel(UIPanel):
             m.set_position((left, top))
 
     def _insert_top(self, value):
-        '''
+        """
         Helper function for maintaining the list of map "tops" used for aligning the maps
         within the grid.
 
         Parameters:
         - value: a map top (y of the map's origin)
-        '''
-        l = len(self._tops)
-        if l > 0:
-            for i in range(l):
+        """
+        length = len(self._tops)
+        if length > 0:
+            for i in range(length):
                 if value < self._tops[i]:
                     self._tops.insert(i, value)
                     return i
                 if value == self._tops[i]:
                     return i
         self._tops.append(value)
-        return l
+        return length
 
     def _insert_left(self, value):
-        '''
+        """
         Helper function for maintaining the list of map "lefts" used for aligning the maps
         within the grid.
 
         Parameters:
         - value: a map top (x of the map's origin)
-        '''
-        l = len(self._lefts)
-        if l > 0:
-            for i in range(l):
+        """
+        length = len(self._lefts)
+        if length > 0:
+            for i in range(length):
                 if value < self._lefts[i]:
                     self._lefts.insert(i, value)
                     return i
                 if value == self._lefts[i]:
                     return i
         self._lefts.append(value)
-        return l
+        return length
+
 
 class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
-    '''
+    """
     Application class for pycraft map tool.
-    '''
+    """
+
     def __init__(self, size):
-        '''
+        """
         Create and instance of PycraftMapToolApp
 
         Parameters:
         - size: sets the size of the root window
-        '''
+        """
         super().__init__(size, 'Pycraft Map Tool')
         self._map_dict = {}
 
@@ -216,9 +214,9 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         self._map_panel = PycraftMapPanel(rr, self.ui_manager)
 
     def handle_event(self, event):
-        '''
+        """
         Handle events from the UIWorldSelector (inherited from the base class)
-        '''
+        """
         if super().handle_event(event):
             return True
         if event.type == pycraft_gui.MAPAPP_WORLD_CHANGED:
@@ -228,16 +226,16 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         return False
 
     def load_world_maps(self, world: pycraft.world.World):
-        '''
+        """
         Load the maps from the new world.
 
         Parameters:
         - world: The pycraft world object of the saved world.
-        '''
+        """
         world = self._world_selector.world
         # load the map files
         self._map_dict = {}
-        mappath = world.mappath
+        mappath = world.map_path
         mapfilelist = glob.glob(os.path.join(mappath, 'map*.dat'))
         self._map_panel.reset()
         for f in mapfilelist:
@@ -249,6 +247,7 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
                 # It would probably be better to use threads, but this
                 # way worked and it was easy.
                 self.event_loop()
+
 
 if __name__ == '__main__':
     app = PycraftMapToolApp((1024, 800))

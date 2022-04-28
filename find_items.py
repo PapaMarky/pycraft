@@ -96,7 +96,7 @@ def check_entity_data(region, search, show_all, pos, dist):
     for cy in range(Chunk.BLOCK_WIDTH):
         for cx in range(Chunk.BLOCK_WIDTH):
             # check region data
-            chunk = region.get_chunk('entities', cx, cy)
+            chunk = region.get_r_chunk('entities', cx, cy)
             # print(f'--- c {cx} {cy} ---')
             for e in chunk.entities:
                 check_items(e, search, show_all, pos, dist)
@@ -106,7 +106,7 @@ def check_region_data(region, search, show_all, pos, dist):
     for cy in range(Chunk.BLOCK_WIDTH):
         for cx in range(Chunk.BLOCK_WIDTH):
             # check region data
-            rchunk = region.get_chunk('region', cx, cy)
+            rchunk = region.get_r_chunk('region', cx, cy)
             # print(f'--- c {cx} {cy} ---')
             entities = rchunk.get_tag('block_entities')
             for e in entities:

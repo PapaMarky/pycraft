@@ -33,6 +33,7 @@ import zlib
 import os
 from pycraft.error import PycraftException
 
+
 class Mca:
     """Class used to read Minecraft region files and the chunk information contained within.
     

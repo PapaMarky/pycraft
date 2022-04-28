@@ -17,7 +17,7 @@ from pycraft import Region
 from pycraft import World
 from pycraft.util import ElapsedTime
 from pycraft.colors import get_sheep_color
-from pycraft.entity import EntityFactory
+from pycraft.entity import entity_factory
 
 SHUTTING_DOWN=False
 
@@ -192,7 +192,7 @@ def process_item(item, owner, pos, container, container_id, item_list, modifier_
         return item_id
 
 def process_entity(entity, entity_list, item_list, villager_list, modifier_list, db):
-    e = EntityFactory(entity)
+    e = entity_factory(entity)
     pos = e.position
     color = get_sheep_color(e.color)
     chested = e.get_attributev('ChestedHorse') == 1
@@ -315,7 +315,7 @@ def process_poi(region, db):
     count = 0
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
-            poi_chunk = region.get_chunk('poi', cx, cy)
+            poi_chunk = region.get_r_chunk('poi', cx, cy)
             if poi_chunk:
                 logging.debug(f'Loading poi chunk {cx}, {cy}...')
                 sections = poi_chunk.get_tag('Sections')
@@ -341,10 +341,10 @@ def process_poi(region, db):
                             'type': rtype,
                             'free': free_tickets
                         })
-        if len(poi_list) > 0:
-            logging.info(f'adding {len(poi_list)} POIs')
-            db.insert_poi_records(poi_list)
-            poi_list = []
+    if len(poi_list) > 0:
+        logging.info(f'adding {len(poi_list)} POIs')
+        db.insert_poi_records(poi_list)
+        poi_list = []
     logging.info(f'Processed {count} poi records ({et.elapsed_time_str()})')
 
 def process_regions(region, db):
@@ -358,7 +358,7 @@ def process_regions(region, db):
         for cy in range(Chunk.BLOCK_WIDTH):
             if SHUTTING_DOWN:
                 return
-            region_chunk = region.get_chunk('region', cx, cy)
+            region_chunk = region.get_r_chunk('region', cx, cy)
             total_size += region_chunk.size
             block_entities = region_chunk.get_tag('block_entities')
             if block_entities:
@@ -366,14 +366,14 @@ def process_regions(region, db):
                 for entity in block_entities:
                     count += 1
                     process_entity_items(entity, item_list, modifier_list, db)
-        if len(item_list) > 0:
-            logging.info(f'adding {len(item_list)} items')
-            db.insert_items_records(item_list)
-            item_list = []
-        if len(modifier_list) > 0:
-            logging.info(f'adding {len(modifier_list)} modifiers')
-            db.insert_item_modifiers_records(modifier_list)
-            modifier_list = []
+    if len(item_list) > 0:
+        logging.info(f'adding {len(item_list)} items')
+        db.insert_items_records(item_list)
+        item_list = []
+    if len(modifier_list) > 0:
+        logging.info(f'adding {len(modifier_list)} modifiers')
+        db.insert_item_modifiers_records(modifier_list)
+        modifier_list = []
     logging.info(f'Processed {count} block entities in region. TOTAL SIZE: {total_size} TIME: {et.elapsed_time_str()}, {total_size/et.get_elapsed_time():.0f} BPS')
 
 def process_entities(region, db):
@@ -383,7 +383,7 @@ def process_entities(region, db):
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
             # print(f'Loading chunk {cx}, {cy}...')
-            entity_chunk = region.get_chunk('entities', cx, cy)
+            entity_chunk = region.get_r_chunk('entities', cx, cy)
             entities = entity_chunk.entities
             entity_list = []
             villager_list = []
@@ -395,22 +395,22 @@ def process_entities(region, db):
                 count += 1
                 process_entity(entity, entity_list, item_list, villager_list, modifier_list, db)
 
-            if len(entity_list) > 0:
-                logging.info(f'adding {len(entity_list)} entities')
-                db.insert_entity_records(entity_list)
-                entity_list = []
-            if len(villager_list) > 0:
-                logging.info(f'adding {len(villager_list)} villagers')
-                db.insert_villager_records(villager_list)
-                villager_list = []
-            if len(item_list) > 0:
-                logging.info(f'adding {len(item_list)} items')
-                db.insert_items_records(item_list)
-                item_list = []
-            if len(modifier_list) > 0:
-                logging.info(f'adding {len(modifier_list)} modifiers')
-                db.insert_item_modifiers_records(modifier_list)
-                modifier_list = []
+    if len(entity_list) > 0:
+        logging.info(f'adding {len(entity_list)} entities')
+        db.insert_entity_records(entity_list)
+        entity_list = []
+    if len(villager_list) > 0:
+        logging.info(f'adding {len(villager_list)} villagers')
+        db.insert_villager_records(villager_list)
+        villager_list = []
+    if len(item_list) > 0:
+        logging.info(f'adding {len(item_list)} items')
+        db.insert_items_records(item_list)
+        item_list = []
+    if len(modifier_list) > 0:
+        logging.info(f'adding {len(modifier_list)} modifiers')
+        db.insert_item_modifiers_records(modifier_list)
+        modifier_list = []
     logging.info(f'Processed {count} entities in entities data ({et.elapsed_time_str()})')
 
 def process_player(player, db):

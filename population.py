@@ -4,7 +4,7 @@ from pycraft import World
 from pycraft import Entity
 
 from pycraft.chunk import Chunk
-from pycraft.entity import EntityFactory
+from pycraft.entity import entity_factory
 
 import argparse
 import sys
@@ -49,7 +49,7 @@ def process_entity(e, entity_count):
     
 def process_entities(entities, entity_count):
     for entity in entities:
-        e = EntityFactory(entity)
+        e = entity_factory(entity)
         process_entity(e, entity_count)
 
 def process_region(region, player=None):
@@ -57,12 +57,12 @@ def process_region(region, player=None):
     if player:
         v = player.get_vehicle()
         if v and 'Entity' in v:
-            v_ent = EntityFactory(v['Entity'])
+            v_ent = entity_factory(v['Entity'])
             process_entity(v_ent, entity_count)
 
     for cx in range(Chunk.BLOCK_WIDTH):
         for cy in range(Chunk.BLOCK_WIDTH):
-            entity_chunk = region.get_chunk('entities', cx, cy)
+            entity_chunk = region.get_r_chunk('entities', cx, cy)
             # print(f'    {entity_chunk.position()}')
             entities = entity_chunk.entities
             process_entities(entities, entity_count)
@@ -77,8 +77,8 @@ if __name__ == '__main__':
     alist = player.get_attr_list()
     v = player.get_vehicle()
     if v:
-        v_ent = EntityFactory(v['Entity']
-                              )
+        v_ent = entity_factory(v['Entity']
+                               )
         print('Player Vehicle:')
         print(f' - {v_ent.id}: {v_ent.uuid}')
         a = v_ent.owner
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         while cx <= cx1:
             cpos = (cx, player_pos[1], cy)
             print(f'--- CHUNK {cx}, {cy}')
-            entity_chunk = world.get_chunk(cpos, 'entities')
+            entity_chunk = world.get_r_chunk(cpos, 'entities')
             # find mob data
             if entity_chunk:
                 print(f'    {entity_chunk.position()}')

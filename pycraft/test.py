@@ -8,4 +8,3 @@ print(f'#### data: {data}')
 
 with open('map_106.json', 'w') as jfile:
     jfile.write(json.dumps(data['data'], indent=2))
-
