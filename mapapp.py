@@ -10,6 +10,8 @@ from pygame_gui.elements.ui_panel import UIPanel
 from pygame_gui.windows import UIMessageWindow
 
 import pycraft_gui
+from pycraft_gui import PycraftGuiApp, MAP_APP_WORLD_CHANGED
+
 from pycraft.map import Map
 
 GAP = 10
@@ -190,7 +192,7 @@ class PycraftMapPanel(UIPanel):
         return length
 
 
-class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
+class PycraftMapToolApp(PycraftGuiApp):
     """
     Application class for pycraft map tool.
     """
@@ -218,7 +220,7 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         """
         if super().handle_event(event):
             return True
-        if event.type == pycraft_gui.MAP_APP_WORLD_CHANGED:
+        if event.type == MAP_APP_WORLD_CHANGED:
             # the selected world has been changed. Load the map data for the new world.
             self.load_world_maps()
             return True
