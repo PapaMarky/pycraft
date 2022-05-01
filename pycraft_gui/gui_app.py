@@ -173,7 +173,7 @@ class GuiApp:
         return self._ui_manager
 
     @property
-    def framerate(self):
+    def framerate(self) -> int:
         return self._framerate
 
     def _main_loop(self):
