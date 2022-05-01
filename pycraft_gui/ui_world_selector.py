@@ -176,7 +176,7 @@ class UIWorldSelector(UIPanel):
         # Send event so App will actually load the new world
         event_data = {'text': self.selected_world,
                       'ui_element': self}
-        pygame.event.post(pygame.event.Event(pycraft_gui.MAPAPP_WORLD_CHANGED, event_data))
+        pygame.event.post(pygame.event.Event(pycraft_gui.MAP_APP_WORLD_CHANGED, event_data))
 
     @property
     def world(self):

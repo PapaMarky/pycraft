@@ -4,17 +4,16 @@ from pathlib import Path
 from typing import Union
 
 import pygame
-from pygame_gui.core.interfaces import IContainerLikeInterface
+from pygame_gui.core.interfaces import IContainerLikeInterface, IUIManagerInterface
 from pygame_gui.elements.ui_image import UIImage
 from pygame_gui.elements.ui_panel import UIPanel
-from pygame_gui.ui_manager import UIManager
 from pygame_gui.windows import UIMessageWindow
 
-import pycraft
 import pycraft_gui
 from pycraft.map import Map
 
 GAP = 10
+
 
 class PycraftMapElement(UIImage):
     """
@@ -23,7 +22,7 @@ class PycraftMapElement(UIImage):
 
     def __init__(self,
                  rr: pygame.Rect,
-                 manager: UIManager,
+                 manager: IUIManagerInterface,
                  container: Union[IContainerLikeInterface, None],
                  image_dir: str,
                  pycraft_map: Map):
@@ -37,7 +36,7 @@ class PycraftMapElement(UIImage):
         Parameters:
         - rr: Relative Rectangle
         - manager: the UIManager for the app
-        - container: The continer object.
+        - container: The container object.
         - image_dir: directory where temporary map PNG files are stored.
         - pycraft_map: A pycraft.Map object with the map loaded into it
         """
@@ -46,7 +45,7 @@ class PycraftMapElement(UIImage):
         outpath = os.path.join(image_dir, os.path.basename(pycraft_map.path)[:-4] + '.png')
         img.save(outpath)
         surface = pygame.image.load_extended(outpath)
-        super().__init__(rr, surface, manager)
+        super().__init__(rr, surface, manager, container=container)
         self._width = img.width
 
     def get_origin(self):
@@ -203,7 +202,7 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         Parameters:
         - size: sets the size of the root window
         """
-        super().__init__(size, 'Pycraft Map Tool', flags=pygame.RESIZABLE)
+        super().__init__(size, 'Pycraft Map Tool', resizeable=True)
         self._map_dict = {}
 
         y = self._world_selector.bottom + GAP
@@ -219,13 +218,13 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         """
         if super().handle_event(event):
             return True
-        if event.type == pycraft_gui.MAPAPP_WORLD_CHANGED:
+        if event.type == pycraft_gui.MAP_APP_WORLD_CHANGED:
             # the selected world has been changed. Load the map data for the new world.
-            self.load_world_maps(event.text)
+            self.load_world_maps()
             return True
         return False
 
-    def load_world_maps(self, world: pycraft.world.World):
+    def load_world_maps(self):
         """
         Load the maps from the new world.
 
@@ -251,6 +250,7 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
                 self.ui_manager,
                 window_title='Bummer'
             )
+            msg_win.show()
             return
         for f in mapfilelist:
             mobj = Map(f)
@@ -260,7 +260,7 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
                 # run the event loop once so that the screen updates
                 # It would probably be better to use threads, but this
                 # way worked and it was easy.
-                self.event_loop()
+                self._main_loop()
 
 
 if __name__ == '__main__':
