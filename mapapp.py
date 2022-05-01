@@ -8,13 +8,13 @@ from pygame_gui.core.interfaces import IContainerLikeInterface
 from pygame_gui.elements.ui_image import UIImage
 from pygame_gui.elements.ui_panel import UIPanel
 from pygame_gui.ui_manager import UIManager
+from pygame_gui.windows import UIMessageWindow
 
 import pycraft
 import pycraft_gui
 from pycraft.map import Map
 
 GAP = 10
-
 
 class PycraftMapElement(UIImage):
     """
@@ -203,7 +203,7 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         Parameters:
         - size: sets the size of the root window
         """
-        super().__init__(size, 'Pycraft Map Tool')
+        super().__init__(size, 'Pycraft Map Tool', flags=pygame.RESIZABLE)
         self._map_dict = {}
 
         y = self._world_selector.bottom + GAP
@@ -238,6 +238,20 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
         mappath = world.map_path
         mapfilelist = glob.glob(os.path.join(mappath, 'map*.dat'))
         self._map_panel.reset()
+        if len(mapfilelist) < 1:
+            size = self.size
+            w = size[0]/3
+            h = size[1]/3
+            x = size[0]/2 - w/2
+            y = size[1]/2 - h/2
+            world_name = os.path.basename(world.path)
+            msg_win = UIMessageWindow(
+                pygame.Rect(x, y, w, h),
+                f'No maps found in<br><br>{world_name}',
+                self.ui_manager,
+                window_title='Bummer'
+            )
+            return
         for f in mapfilelist:
             mobj = Map(f)
             # currently we only look at fully zoomed maps (zoom = 4)
@@ -250,5 +264,5 @@ class PycraftMapToolApp(pycraft_gui.PycraftGuiApp):
 
 
 if __name__ == '__main__':
-    app = PycraftMapToolApp((1024, 800))
+    app = PycraftMapToolApp((1024, 800), )
     app.run()
