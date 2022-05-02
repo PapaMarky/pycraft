@@ -96,7 +96,7 @@ class GuiApp:
         self.background_surface.fill(pygame.Color('#303030'))
         self._ui_manager = UIManager(self.size)
         self.clock = pygame.time.Clock()
-        self.is_running = True
+        self.is_running = False
         self._update_objects = []
 
     def setup(self):
@@ -154,6 +154,12 @@ class GuiApp:
         """
         return False
 
+    def on_shutdown(self):
+        """
+        Called when app is shutting down. Override with application specific clean up.
+        """
+        pass
+
     @property
     def size(self):
         """
@@ -202,6 +208,7 @@ class GuiApp:
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self.on_shutdown()
                 self.is_running = False
             elif event.type == pygame.WINDOWRESIZED:
                 self.background_surface = pygame.Surface(self.size).convert()
@@ -223,5 +230,8 @@ class GuiApp:
         """
         Run the app by continuously calling the main_loop
         """
+        if self.is_running:
+            return
+        self.is_running = True
         while self.is_running:
             self._main_loop()
