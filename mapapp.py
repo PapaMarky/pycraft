@@ -10,7 +10,7 @@ from pygame_gui.elements.ui_panel import UIPanel
 from pygame_gui.windows import UIMessageWindow
 
 import pycraft_gui
-from pycraft_gui import PycraftGuiApp, MAP_APP_WORLD_CHANGED
+from pycraft_gui import PycraftGuiApp, PYCRAFT_WORLD_CHANGED
 
 from pycraft.map import Map
 
@@ -220,7 +220,7 @@ class PycraftMapToolApp(PycraftGuiApp):
         """
         if super().handle_event(event):
             return True
-        if event.type == MAP_APP_WORLD_CHANGED:
+        if event.type == PYCRAFT_WORLD_CHANGED:
             # the selected world has been changed. Load the map data for the new world.
             self.load_world_maps()
             return True
