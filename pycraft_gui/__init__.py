@@ -1,1 +1,1 @@
-from pycraft_gui.pycraft_app import PycraftGuiApp, MAP_APP_WORLD_CHANGED
+from pycraft_gui.pycraft_app import PycraftGuiApp, PYCRAFT_WORLD_CHANGED, PYCRAFT_WORLD_SELECTION_CHANGED

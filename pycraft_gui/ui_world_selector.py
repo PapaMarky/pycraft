@@ -38,20 +38,20 @@ class UIWorldSelector(UIPanel):
         rr = pygame.Rect(0, 0, -1, h)
 
         self._world_label = UILabel(rr,
-                                   'Saved World:',
-                                   manager,
-                                   container=self,
-                                   anchors={
-                                       'top': 'top',
-                                       'left': 'left',
-                                       'bottom': 'top',
-                                       'right': 'left'
-                                   })
+                                    'Saved World:',
+                                    manager,
+                                    container=self,
+                                    anchors={
+                                        'top': 'top',
+                                        'left': 'left',
+                                        'bottom': 'top',
+                                        'right': 'left'
+                                    })
 
         butt_w = 150
         butt_h = h
         rr = pygame.Rect(0, 0, butt_w, butt_h)
-        rr.topright = (0,0)
+        rr.topright = (0, 0)
         self._load_world_button = UIButton(relative_rect=rr,
                                            text='Load World',
                                            manager=manager,
@@ -64,7 +64,7 @@ class UIWorldSelector(UIPanel):
                                            )
         self.options = []
         self._find_worlds()
-        self.options.insert(0,'None')
+        self.options.insert(0, 'None')
         selection = self.options[0]
         x = 0
         y = self._world_label.get_abs_rect().y
@@ -75,10 +75,10 @@ class UIWorldSelector(UIPanel):
                                           rr,
                                           manager, container=container,
                                           anchors={
-                                              'left': 'left',
-                                              'right': 'right',
                                               'top': 'top',
+                                              'left': 'left',
                                               'bottom': 'top',
+                                              'right': 'right',
                                               'left_target': self._world_label,
                                               'right_target': self._load_world_button
                                           },
@@ -90,12 +90,13 @@ class UIWorldSelector(UIPanel):
 
     def process_event(self, event: pygame.event.Event) -> bool:
         if event.type == UI_DROP_DOWN_MENU_CHANGED and event.ui_element == self._world_menu:
-            print(f'drop down')
             self._selected_world = event.text
+            event_data = {'text': self.selected_world,
+                          'ui_element': self}
+            pygame.event.post(pygame.event.Event(pycraft_gui.PYCRAFT_WORLD_SELECTION_CHANGED, event_data))
             self.set_load_world_button_enabled()
             return True
         if event.type == pygame_gui.UI_BUTTON_PRESSED and event.ui_element == self._load_world_button:
-            print(f'Got')
             self.load_world(self.selected_world)
             return True
         return False
@@ -176,7 +177,28 @@ class UIWorldSelector(UIPanel):
         # Send event so App will actually load the new world
         event_data = {'text': self.selected_world,
                       'ui_element': self}
-        pygame.event.post(pygame.event.Event(pycraft_gui.MAP_APP_WORLD_CHANGED, event_data))
+        pygame.event.post(pygame.event.Event(pycraft_gui.PYCRAFT_WORLD_CHANGED, event_data))
+
+    @property
+    def world_label(self):
+        """
+        Get the UILabel. Useful for layout when adding elements to the UIWorldSelector
+        """
+        return self._world_label
+
+    @property
+    def world_menu(self):
+        """
+        Get the UIDropdownMenu. Useful for layout when adding elements to the UIWorldSelector
+        """
+        return self._world_menu
+
+    @property
+    def load_world_button(self):
+        """
+        Get the UIButton. Useful for layout when adding elements to the UIWorldSelector
+        """
+        return self._load_world_button
 
     @property
     def world(self):

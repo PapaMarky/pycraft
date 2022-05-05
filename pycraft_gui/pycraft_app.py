@@ -3,7 +3,9 @@ from pycraft_gui.gui_app import GuiApp
 import pygame
 from pygame.event import custom_type
 
-MAP_APP_WORLD_CHANGED = custom_type()
+PYCRAFT_WORLD_CHANGED = custom_type()
+PYCRAFT_WORLD_SELECTION_CHANGED = custom_type()
+
 
 class PycraftGuiApp(GuiApp):
     """
@@ -12,7 +14,8 @@ class PycraftGuiApp(GuiApp):
     Manages Saved location / selection / loading of pycraft.World
     """
     SPACE = 10
-    def __init__(self, size, title, resizeable = True):
+
+    def __init__(self, size, title, resizeable=True):
         """
         Create a PycraftGuiApp object
         Parameters:

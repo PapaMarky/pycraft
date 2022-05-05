@@ -1,0 +1,20 @@
+{
+  "@TextFieldLabel": {
+    "misc": {
+      "text_horiz_alignment": "right",
+      "text_vert_alignment": "center",
+      "text_horiz_alignment_padding": "3"
+    }
+  },
+  "@TextField": {
+    "misc": {
+      "text_horiz_alignment": "right",
+      "text_vert_alignment": "center",
+      "text_horiz_alignment_padding": "3"
+    },
+    "colours": {
+      "normal_text": "#000000",
+      "dark_bg": "#BBBBBB"
+    }
+  }
+}
