@@ -1,20 +1,30 @@
 import glob
-import json
 import os
 
 import pygame
-from pygame_gui import UI_DROP_DOWN_MENU_CHANGED
 from pygame_gui.elements import UIPanel, UILabel, UIImage
 from pygame_gui_extras.app import GuiApp
 
-from pycraft_gui import PYCRAFT_WORLD_CHANGED
 from pycraft_gui.pycraft_app import PYCRAFT_WORLD_SELECTION_CHANGED
 from pycraft_gui.ui_world_selector import UIWorldSelector
+
+
+def blank_icon():
+    icon = pygame.surface.Surface((64, 64))
+    icon.fill('#000000')
+    pygame.draw.rect(icon, '#303030', pygame.Rect(2, 2, 60, 60))
+    return icon
 
 
 class WorldDataViewerApp(GuiApp):
     def __init__(self, size):
         super(WorldDataViewerApp, self).__init__(size, title='World Data Viewer', )
+        self._region_status_panel = None
+        self._maps_count_text = None
+        self._poi_count_text = None
+        self._regions_count_text = None
+        self.world_icon = None
+        self._world_info_panel = None
         self._entities_count_text = None
         self._world_data = None
         self._top_panel = None
@@ -56,7 +66,7 @@ class WorldDataViewerApp(GuiApp):
         iy = 5
         self.world_icon = UIImage(
             pygame.Rect(ix, iy, icon_width, icon_height),
-            self.blank_icon(), self.ui_manager,
+            blank_icon(), self.ui_manager,
             container=self._world_info_panel,
             anchors={
                 'top': 'top',
@@ -71,7 +81,7 @@ class WorldDataViewerApp(GuiApp):
         label_height = 20
         # ENTITIES
         entities_label = UILabel(
-            pygame.Rect(x, y+3, label_width, label_height),
+            pygame.Rect(x, y + 3, label_width, label_height),
             'Entities:', self.ui_manager,
             container=self._world_info_panel,
             object_id='@TextFieldLabel',
@@ -153,7 +163,7 @@ class WorldDataViewerApp(GuiApp):
         )
 
         maps_label = UILabel(
-            pygame.Rect(0, y+3, label_width, label_height),
+            pygame.Rect(0, y + 3, label_width, label_height),
             'Maps:', self.ui_manager,
             container=self._world_info_panel,
             object_id='@TextFieldLabel',
@@ -178,7 +188,24 @@ class WorldDataViewerApp(GuiApp):
                 'left_target': maps_label
             }
         )
-
+    def setup_region_status_panel(self):
+        app_size = self.size
+        x = 0
+        y = 0
+        width = app_size[0]
+        height = app_size[1] - self._world_info_panel.rect.height - 5
+        r = pygame.Rect(x, y, width, height)
+        print(f'r: {r}')
+        self._region_status_panel = UIPanel(
+            r, 1, self.ui_manager,
+            anchors={
+                'top': 'top',
+                'left': 'left',
+                'bottom': 'top',
+                'right': 'right',
+                'top_target': self._world_selector
+            }
+        )
 
     def setup(self):
         width = self.size[0]
@@ -186,7 +213,7 @@ class WorldDataViewerApp(GuiApp):
         x = 0
         y = 1
         self._world_selector = UIWorldSelector(
-            pygame.Rect(x, y, width/2, height),
+            pygame.Rect(x, y, width / 2, height),
             self.ui_manager,
             anchors={
                 'top': 'top',
@@ -196,11 +223,7 @@ class WorldDataViewerApp(GuiApp):
             }
         )
         self.setup_world_info_panel(x, y, width, height)
-
-    def blank_icon(self):
-        icon = pygame.surface.Surface((64,64))
-        icon.fill('#8080E0')
-        return icon
+        self.setup_region_status_panel()
 
     def get_world_info(self):
         path = self._world_selector.get_world_path()
@@ -218,6 +241,8 @@ class WorldDataViewerApp(GuiApp):
             self._entities_count_text.set_text('')
             self._regions_count_text.set_text('')
             self._poi_count_text.set_text('')
+            self.world_icon.set_image(blank_icon())
+
             return
         mappath = os.path.join(path, 'data')
         file_list = glob.glob(os.path.join(mappath, 'map*.dat'))
@@ -244,7 +269,7 @@ class WorldDataViewerApp(GuiApp):
         if os.path.exists(icon_path):
             icon = pygame.image.load(icon_path)
         else:
-            icon = self.blank_icon()
+            icon = blank_icon()
         self.world_icon.set_image(icon)
 
     def on_select_world(self):
@@ -253,6 +278,7 @@ class WorldDataViewerApp(GuiApp):
 
     def load_world(self):
         print(f'loading world...')
+
 
 app = WorldDataViewerApp((1020, 900))
 app.ui_manager.get_theme().load_theme('themes/pycraft.json')
