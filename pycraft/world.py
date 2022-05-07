@@ -1,3 +1,4 @@
+from pycraft.level import Level
 from pycraft.player import Player
 from pycraft.region import Region
 from pycraft.error import PycraftException
@@ -10,6 +11,11 @@ class World:
     def __init__(self, path):
         self._path = path
         self._player = Player(path)
+        self._level = Level(path)
+
+    @property
+    def level(self):
+        return self._level
 
     @property
     def path(self):
