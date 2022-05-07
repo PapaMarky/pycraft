@@ -1,3 +1,5 @@
+import os
+
 from pycraft import DatFile
 
 
@@ -12,7 +14,7 @@ class Level(DatFile):
 
         :param path: Path to the saved world
         """
-        super().__init__(path)
+        super().__init__(os.path.join(path, 'level.dat'))
 
     @property
     def allowCommands(self):

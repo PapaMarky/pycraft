@@ -1,3 +1,6 @@
+from datetime import datetime
+from pathlib import Path
+
 from pycraft.level import Level
 from pycraft.player import Player
 from pycraft.region import Region
@@ -8,6 +11,61 @@ import os
 
 
 class World:
+
+    @staticmethod
+    def get_saved_worlds():
+        save_world_list = []
+        savepaths = (
+            '%HOME%/Library/Application Support/minecraft/saves',
+            '%APPDATA%.minecraft'
+            '%HOME%.minecraft'
+        )
+        # plat = platform.system()
+        home = str(Path.home())
+        savedir = ''
+        for path in savepaths:
+            p = path.replace('%HOME%', home)
+            if os.path.exists(p):
+                savedir = p
+                break
+
+        _world_paths = {}
+        for fname in os.listdir(savedir):
+            _world_paths[fname] = os.path.join(savedir, fname)
+
+        for world_name in _world_paths:
+            world_path = _world_paths[world_name]
+            print(f'path: {world_path}')
+            level = Level(world_path)
+            file_name = world_name
+            icon_path = os.path.join(world_path, 'icon.png')
+            name = level.LevelName
+            last_played = level.LastPlayed
+            # 0 is Survival, 1 is Creative, 2 is Adventure, 3 is Spectator
+            mode_names = ['Survival', 'Creative', 'Adventure', 'Spectator']
+            mode = mode_names[level.GameType]
+            cheats = level.allowCommands
+            dt = datetime.fromtimestamp(last_played/1000)
+            version = level.Version['Name'].value
+            save_world_list.append({
+                'file_name': file_name,
+                'icon_path': icon_path,
+                'name': name,
+                'last_played': dt,
+                'mode': mode,
+                'cheats': cheats,
+                'version': version
+            })
+        save_world_list.sort(key=lambda x: x['last_played'], reverse=True)
+        for world in save_world_list:
+            print(world['name'])
+            print(world['last_played'])
+            print(world['mode'])
+            print(f'Cheats: {"Enabled" if world["cheats"] else "Disabled"}')
+            print(f'Version: {world["version"]}')
+            print('----------')
+        return save_world_list
+
     def __init__(self, path):
         self._path = path
         self._player = Player(path)
