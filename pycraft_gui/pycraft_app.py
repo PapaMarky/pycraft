@@ -22,7 +22,7 @@ class PycraftGuiApp(GuiApp):
         - size: size of the window
         - title: title to display on the window
         """
-        super().__init__(size, title=title, resizeable=resizeable)
+        super().__init__(size, title=title, resizeable=resizeable, background_color='#101010')
         self._add_world_elements()
 
     def _add_world_elements(self):

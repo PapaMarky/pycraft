@@ -1,6 +1,7 @@
 """
 GuiApp module
 """
+from typing import Union
 
 import pygame
 from pygame_gui import UIManager
@@ -68,7 +69,7 @@ class GuiApp:
             app.run()
     """
 
-    def __init__(self, window_size, framerate: int = 60, title: str = None, resizeable=True):
+    def __init__(self, window_size, background_color = '#303030', framerate: int = 60, title: str = None, resizeable=True):
         """
         Create an instance of GuiApp
 
@@ -78,6 +79,7 @@ class GuiApp:
             resizeable: Whether the window created for the application should be resizable. Defaults to True.
             framerate: Speed at which updates occur. Unit: FPS. Default: 60
         """
+        self._background_color = pygame.Color(background_color)
         self._framerate = framerate
         self.title = title
         pygame.init()
@@ -93,7 +95,7 @@ class GuiApp:
         self.root_window_surface = pygame.display.set_mode(window_size, flags)
 
         self.background_surface = pygame.Surface(self.size).convert()
-        self.background_surface.fill(pygame.Color('#303030'))
+        self.background_surface.fill(pygame.Color(self._background_color))
         self._ui_manager = UIManager(self.size)
         self.clock = pygame.time.Clock()
         self.is_running = False
@@ -212,7 +214,7 @@ class GuiApp:
                 self.is_running = False
             elif event.type == pygame.WINDOWRESIZED:
                 self.background_surface = pygame.Surface(self.size).convert()
-                self.background_surface.fill(pygame.Color('#303030'))
+                self.background_surface.fill(pygame.Color(self._background_color))
                 self.ui_manager.set_window_resolution(self.size)
             else:
                 self.handle_event(event)
