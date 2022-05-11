@@ -16,23 +16,27 @@ from pycraft_gui.gui_app import GuiApp
 from pycraft_gui.ui_image_tiled import UIImageTiled
 
 
-class PycraftWorldMenuItem(UIPanel):
+class PycraftMenuItemItem(UIPanel):
     def __init__(self,
-                 icon_path : str,
-                 name : str,
-                 file_name : str,
-                 last_played : datetime.datetime,
-                 mode : str,
-                 cheats : bool,
+                 icon_path: str,
+                 name: str,
+                 file_name: str,
+                 last_played: datetime.datetime,
+                 mode: str,
+                 cheats: bool,
                  version: str,
-                 menu,
-                 relative_rect, starting_layer_height, manager,
-                 margin = 10,
+                 outer_item,
+                 margin,
+                 relative_rect, starting_layer_height,
+                 manager,
                  **kwargs):
-        self._menu = menu
-        super(PycraftWorldMenuItem, self).__init__(relative_rect, starting_layer_height,
-                                                   manager, object_id='@menu_item',
-                                                   **kwargs)
+        self.outer_item = outer_item
+        print(f'item rect: {relative_rect}')
+        super(PycraftMenuItemItem, self).__init__(relative_rect,
+                                                  starting_layer_height,
+                                                  manager,
+                                                  **kwargs)
+
         icon_surface = pygame.image.load(icon_path)
         icon_size = 100
         icon_surface = pygame.transform.smoothscale(icon_surface, (icon_size, icon_size))
@@ -66,7 +70,7 @@ class PycraftWorldMenuItem(UIPanel):
         )
         self._arrow.disable()
         self._text = []
-        item_width = menu.item_width - icon_surface.get_width() - 3 * margin
+        item_width = self.outer_item.menu.item_width - icon_surface.get_width() - 3 * margin
         item_height = icon_rect.height / 3
         text = [
             f'{name}',
@@ -97,11 +101,6 @@ class PycraftWorldMenuItem(UIPanel):
             text_item.disable()
             self._text.append(text_item)
 
-    def set_dimensions(self, dimensions: Union[pygame.math.Vector2,
-                                               Tuple[int, int],
-                                               Tuple[float, float]]):
-        print(f'Setting Item Dimensions ({self._text[0].text}): Old: {self.rect.size}, New: {dimensions}')
-        super(PycraftWorldMenuItem, self).set_dimensions(dimensions)
 
     def on_hovered(self):
         print(f'Hovered: {self._text[0].text}')
@@ -116,11 +115,60 @@ class PycraftWorldMenuItem(UIPanel):
             x, y = pygame.mouse.get_pos()
             if self.rect.left < x and self.rect.right > x and self.rect.top < y and self.rect.bottom > y:
                 print(f'CLICK on {self._text[0].text}')
-                self._menu.select_item(self)
-                UIButton
+                self.outer_item.menu.select_item(self.outer_item)
                 return True
 
         return False
+
+class PycraftWorldMenuItem(UIPanel):
+    def __init__(self,
+                 icon_path: str,
+                 name: str,
+                 file_name: str,
+                 last_played: datetime.datetime,
+                 mode: str,
+                 cheats: bool,
+                 version: str,
+                 menu,
+                 relative_rect, starting_layer_height, manager,
+                 margin=0,
+                 **kwargs):
+        self.menu = menu
+        self.name = name
+        self.highlight = UIPanel(relative_rect, starting_layer_height,
+                                 manager,
+                                 visible=1,
+                                 object_id='@menu_item_highlight',
+                                 **kwargs)
+        self.highlight.hide()
+        rr = pygame.Rect(relative_rect)
+        print(f'RR: {relative_rect}')
+        if True:
+            rr.width = rr.width - 6
+            rr.height = rr.height - 6
+            rr.top += 3
+            rr.left += 3
+            print(f'RR: {rr}')
+        self.item = PycraftMenuItemItem(icon_path,
+                                        name,
+                                        file_name,
+                                        last_played,
+                                        mode,
+                                        cheats,
+                                        version,
+                                        self,
+                                        margin,
+                                        rr,
+                                        starting_layer_height + 1, manager,
+                                        object_id='@menu_item',
+                                        visible=1,
+                                        **kwargs)
+    def set_dimensions(self, dimensions: Union[pygame.math.Vector2,
+                                               Tuple[int, int],
+                                               Tuple[float, float]]):
+        # print(f'Setting Item Dimensions ({self._text[0].text}): Old: {self.rect.size}, New: {dimensions}')
+        self.highlight.set_dimensions(dimensions)
+        self.item.set_dimensions((dimensions[0] - 6, dimensions[1] - 6))
 
 class PycraftWorldMenu(UIScrollingContainer):
     def __init__(self, relative_rect, manager, **kwargs):
@@ -131,22 +179,26 @@ class PycraftWorldMenu(UIScrollingContainer):
                                                **kwargs
                                                )
         self._items = []
+        self.selected_item = None
 
     def select_item(self, item):
+        print(f'SELECT ITEM: {item.name}')
         for i in self._items:
+            print(f' - {i.name}')
             if i == item:
-                i.focus()
-                i.border_colour = '#FFFFFF'
+                print(f' -- MATCH')
+                i.highlight.show()
+                self.selected_item = i
             else:
-                i.border_colour = '#C0C0C0'
-                i.unfocus()
+                i.highlight.hide()
+
     @property
     def item_margin(self):
         return 5
 
     @property
     def item_height(self):
-        return self.item_margin * 2 + 100
+        return self.item_margin * 2 + 106
 
     @property
     def item_width(self):
@@ -168,16 +220,17 @@ class PycraftWorldMenu(UIScrollingContainer):
         if self.horiz_scroll_bar:
             print(f'Horiz: {self.horiz_scroll_bar.rect}')
 
-    def add_item(self, icon : UIImage,
-                 name : str,
-                 file_name : str,
-                 last_played : datetime.datetime,
-                 mode :str,
-                 cheats : bool,
-                 version : str):
+    def add_item(self, icon: UIImage,
+                 name: str,
+                 file_name: str,
+                 last_played: datetime.datetime,
+                 mode: str,
+                 cheats: bool,
+                 version: str):
 
         y = len(self._items) * self.item_height
         rr = pygame.Rect(0, y, self.item_width, self.item_height)
+        print(f'ADDING ITEM: {name}')
         print(f'item rect: {rr}')
         item = PycraftWorldMenuItem(icon, name, file_name, last_played, mode, cheats, version,
                                     self,
@@ -205,19 +258,20 @@ class PycraftWorldMenu(UIScrollingContainer):
         """
         h = self.item_height * len(self._items)
         w = self.viewpane_width
-        print('----- start ------')
-        self.debug()
+        #        print('----- start ------')
+        #        self.debug()
         # first let the base class adjust the root and view panels.
         self.set_scrollable_area_dimensions((w, h))
-        self.debug()
+        #        self.debug()
         # if adding or removing the vertical scrollbar changed the width of the view panel,
         # set the size of the scroll panel to reflect this.
         # The height is always the total height of the items
         if w != self.viewpane_width:
-            print(f'- Adjust for new scrollbar')
+            #            print(f'- Adjust for new scrollbar')
             self.set_scrollable_area_dimensions((self.viewpane_width, h))
-            self.debug()
-        print('----- end ------')
+
+    #            self.debug()
+    #        print('----- end ------')
 
     def set_items_widths(self):
         """
@@ -242,10 +296,11 @@ class PycraftWorldMenu(UIScrollingContainer):
 
     def process_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEWHEEL:
-            if event.y:
+            if event.y and self.vert_scroll_bar:
                 self.vert_scroll_bar.scroll_wheel_moved = True
                 self.vert_scroll_bar.scroll_wheel_amount = event.y
         return True
+
 
 class PycrafterApp(GuiApp):
     def __init__(self, size, framerate=60, ):
@@ -290,7 +345,7 @@ class PycrafterApp(GuiApp):
             rect,
             dirt_surface,
             self.ui_manager,
-            #object_id='@dirt_background',
+            # object_id='@dirt_background',
             anchors={
                 'top': 'bottom',
                 'left': 'left',
@@ -326,6 +381,7 @@ class PycrafterApp(GuiApp):
                 world['last_played'], world['mode'], world['cheats'], world['version']
             )
         self._world_menu.fit_scrolling_area_to_items()
+
 
 app = PycrafterApp((1020, 900))
 app.ui_manager.get_theme().load_theme('theme.json')

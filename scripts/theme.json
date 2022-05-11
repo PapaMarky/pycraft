@@ -14,6 +14,15 @@
       }
     }
   },
+  "@menu_item_highlight": {
+    "colours": {
+      "normal_border": "#FFFFFF",
+      "dark_bg": "#00000000"
+    },
+    "misc": {
+      "border_width": "2"
+    }
+  },
   "@menu_item_text_label": {
     "font": {
       "name": "fira_code",
