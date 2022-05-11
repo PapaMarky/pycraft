@@ -22,6 +22,9 @@
     },
     "misc": {
       "text_horiz_alignment": "left"
+    },
+    "colours": {
+      "disabled_text": "#FFFFFF"
     }
   },
   "@menu_item_text": {
@@ -31,6 +34,9 @@
     },
     "misc": {
       "text_horiz_alignment": "left"
+    },
+    "colours": {
+      "disabled_text": "#FFFFFF"
     }
   },
   "@title_label": {

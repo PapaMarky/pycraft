@@ -9,7 +9,7 @@ from typing import Union, Tuple
 
 import pygame
 from pygame_gui.core import UIFontDictionary, UIAppearanceTheme
-from pygame_gui.elements import UILabel, UIScrollingContainer, UIPanel, UIImage, UITextBox
+from pygame_gui.elements import UILabel, UIScrollingContainer, UIPanel, UIImage, UITextBox, UIButton
 
 from pycraft import World
 from pycraft_gui.gui_app import GuiApp
@@ -29,7 +29,10 @@ class PycraftWorldMenuItem(UIPanel):
                  relative_rect, starting_layer_height, manager,
                  margin = 10,
                  **kwargs):
-        super(PycraftWorldMenuItem, self).__init__(relative_rect, starting_layer_height, manager, **kwargs)
+        self._menu = menu
+        super(PycraftWorldMenuItem, self).__init__(relative_rect, starting_layer_height,
+                                                   manager, object_id='@menu_item',
+                                                   **kwargs)
         icon_surface = pygame.image.load(icon_path)
         icon_size = 100
         icon_surface = pygame.transform.smoothscale(icon_surface, (icon_size, icon_size))
@@ -47,6 +50,21 @@ class PycraftWorldMenuItem(UIPanel):
                 'right': 'left'
             }
         )
+        self._icon.disable()
+        arrow_surface = pygame.image.load('PlayButton.png')
+        arrow_surface = pygame.transform.smoothscale(arrow_surface, (icon_size, icon_size))
+        self._arrow = UIImage(
+            icon_rect,
+            arrow_surface, manager, container=self,
+            visible=0,
+            anchors={
+                'top': 'top',
+                'left': 'left',
+                'bottom': 'top',
+                'right': 'left'
+            }
+        )
+        self._arrow.disable()
         self._text = []
         item_width = menu.item_width - icon_surface.get_width() - 3 * margin
         item_height = icon_rect.height / 3
@@ -76,6 +94,7 @@ class PycraftWorldMenuItem(UIPanel):
                     'left_target': self._icon
                 }
             )
+            text_item.disable()
             self._text.append(text_item)
 
     def set_dimensions(self, dimensions: Union[pygame.math.Vector2,
@@ -83,6 +102,25 @@ class PycraftWorldMenuItem(UIPanel):
                                                Tuple[float, float]]):
         print(f'Setting Item Dimensions ({self._text[0].text}): Old: {self.rect.size}, New: {dimensions}')
         super(PycraftWorldMenuItem, self).set_dimensions(dimensions)
+
+    def on_hovered(self):
+        print(f'Hovered: {self._text[0].text}')
+        self._arrow.show()
+
+    def on_unhovered(self):
+        print(f'Unhovered: {self._text[0].text}')
+        self._arrow.hide()
+
+    def process_event(self, event: pygame.event.Event) -> bool:
+        if event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
+            x, y = pygame.mouse.get_pos()
+            if self.rect.left < x and self.rect.right > x and self.rect.top < y and self.rect.bottom > y:
+                print(f'CLICK on {self._text[0].text}')
+                self._menu.select_item(self)
+                UIButton
+                return True
+
+        return False
 
 class PycraftWorldMenu(UIScrollingContainer):
     def __init__(self, relative_rect, manager, **kwargs):
@@ -94,6 +132,14 @@ class PycraftWorldMenu(UIScrollingContainer):
                                                )
         self._items = []
 
+    def select_item(self, item):
+        for i in self._items:
+            if i == item:
+                i.focus()
+                i.border_colour = '#FFFFFF'
+            else:
+                i.border_colour = '#C0C0C0'
+                i.unfocus()
     @property
     def item_margin(self):
         return 5
@@ -193,6 +239,13 @@ class PycraftWorldMenu(UIScrollingContainer):
         self.fit_scrolling_area_to_items()
         if self.viewpane_width != old_view_width:
             self.set_items_widths()
+
+    def process_event(self, event: pygame.event.Event) -> bool:
+        if event.type == pygame.MOUSEWHEEL:
+            if event.y:
+                self.vert_scroll_bar.scroll_wheel_moved = True
+                self.vert_scroll_bar.scroll_wheel_amount = event.y
+        return True
 
 class PycrafterApp(GuiApp):
     def __init__(self, size, framerate=60, ):
