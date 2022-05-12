@@ -1,10 +1,7 @@
-from pycraft_gui.ui_world_selector import UIWorldSelector
-from pycraft_gui.gui_app import GuiApp
 import pygame
-from pygame.event import custom_type
 
-PYCRAFT_WORLD_CHANGED = custom_type()
-PYCRAFT_WORLD_SELECTION_CHANGED = custom_type()
+from pycraft_gui.gui_app import GuiApp
+from pycraft_gui.ui_world_selector import UIWorldSelector
 
 
 class PycraftGuiApp(GuiApp):
