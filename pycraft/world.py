@@ -57,13 +57,6 @@ class World:
                 'version': version
             })
         save_world_list.sort(key=lambda x: x['last_played'], reverse=True)
-        for world in save_world_list:
-            print(world['name'])
-            print(world['last_played'])
-            print(world['mode'])
-            print(f'Cheats: {"Enabled" if world["cheats"] else "Disabled"}')
-            print(f'Version: {world["version"]}')
-            print('----------')
         return save_world_list
 
     def __init__(self, path):

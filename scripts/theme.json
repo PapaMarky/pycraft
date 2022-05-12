@@ -1,0 +1,66 @@
+{
+  "@dirt_background": {
+    "colours": {
+      "dark_bg": "#FF0000"
+    },
+    "misc": {
+      "border_width": 5,
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": 50
+    },
+    "images": {
+      "background_image": {
+        "path": "dirt.jpg"
+      }
+    }
+  },
+  "@menu_item_highlight": {
+    "colours": {
+      "normal_border": "#FFFFFF",
+      "dark_bg": "#00000000"
+    },
+    "misc": {
+      "border_width": "2"
+    }
+  },
+  "@menu_item_text_label": {
+    "font": {
+      "name": "fira_code",
+      "size": "23",
+      "bold": "1"
+    },
+    "misc": {
+      "text_horiz_alignment": "left"
+    },
+    "colours": {
+      "disabled_text": "#FFFFFF"
+    }
+  },
+  "@menu_item_text": {
+    "font": {
+      "name": "fira_code",
+      "size": "23"
+    },
+    "misc": {
+      "text_horiz_alignment": "left"
+    },
+    "colours": {
+      "disabled_text": "#FFFFFF"
+    }
+  },
+  "@title_label": {
+    "colours": {
+      "normal_text": "#FFFFFF",
+      "text_shadow": "#000000"
+    },
+    "misc": {
+      "text_shadow_offset": "5,5",
+      "text_shadow_size": "1"
+    },
+    "font": {
+      "name": "fira_code",
+      "size": 100,
+      "bold": 1
+    }
+  }
+}
