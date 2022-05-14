@@ -10,17 +10,25 @@
     },
     "images": {
       "background_image": {
-        "path": "dirt.jpg"
+        "path": "data/dirt.jpg"
       }
     }
   },
   "@menu_item_highlight": {
     "colours": {
-      "normal_border": "#FFFFFF",
+      "normal_border": "#a0a0a0",
       "dark_bg": "#00000000"
     },
     "misc": {
       "border_width": "2"
+    }
+  },
+  "@menu_item": {
+    "colours": {
+      "dark_bg": "#00000000"
+    },
+    "misc": {
+      "border_width": "0"
     }
   },
   "@menu_item_text_label": {

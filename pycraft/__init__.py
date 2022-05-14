@@ -1,4 +1,4 @@
-__version__ = '2.0.0'
+__version__ = '3.0.2'
 
 from pycraft import nbt
 from pycraft import mca
