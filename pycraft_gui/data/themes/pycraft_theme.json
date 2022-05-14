@@ -10,7 +10,7 @@
     },
     "images": {
       "background_image": {
-        "path": "dirt.jpg"
+        "path": "data/dirt.jpg"
       }
     }
   },
