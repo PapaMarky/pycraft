@@ -27,10 +27,12 @@ class PycrafterApp(GuiApp):
         self._top_dirt = None
         title = 'Pycraft'
         super(PycrafterApp, self).__init__(size, framerate=framerate, title=title)
-        themes_dir = pycraft_gui.get_themes_dir()
-        print(f'themes dir: {themes_dir}')
-        if themes_dir:
-            self.ui_manager.get_theme().load_theme(os.path.join(themes_dir, 'pycraft_theme.json'))
+        themes_file = pycraft_gui.get_themes_file_path('pycraft_theme.json')
+        print(f'themes dir: {themes_file}')
+        if themes_file:
+            self.ui_manager.get_theme().load_theme(themes_file)
+        else:
+            print(f'WARNING: theme file not found')
 
 
     def setup(self):
@@ -41,9 +43,7 @@ class PycrafterApp(GuiApp):
         height = 150
         # Top Panel:
         # tiled image background panel
-        data_dir = pycraft_gui.get_data_dir()
-        if data_dir:
-            dirt_image_path = os.path.join(data_dir, 'dark_dirt.jpg')
+        dirt_image_path = pycraft_gui.get_data_file_path('dark_dirt.jpg')
         dirt_surface = pygame.image.load(dirt_image_path)
         dirt_rect = pygame.Rect(x, y, width, height)
         dirt_anchors = {
