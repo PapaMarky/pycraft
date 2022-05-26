@@ -38,7 +38,6 @@ class UIImageTiled(UIElement):
         super().__init__(relative_rect, manager, container,
                          starting_height=1,
                          layer_thickness=1,
-
                          anchors=anchors,
                          visible=visible)
 
@@ -84,8 +83,9 @@ class UIImageTiled(UIElement):
         """
         super().set_dimensions(dimensions)
 
-        self.original_image = self.create_tiled_surface()
         if self.rect.size != self.image.get_size():
+            self.original_image = self.create_tiled_surface()
+            self.original_image = premul_alpha_surface(self.original_image.convert_alpha())
             if self.original_image is None:
                 if self._pre_clipped_image is not None:
                     self.original_image = self._pre_clipped_image
