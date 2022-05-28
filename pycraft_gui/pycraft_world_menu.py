@@ -125,9 +125,12 @@ class PycraftMenuItemItem(UIPanel):
         self._arrow.hide()
 
     def process_event(self, event: pygame.event.Event) -> bool:
+        if super().process_event(event):
+            return True
         if event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
-            x, y = pygame.mouse.get_pos()
-            if self.rect.left < x and self.rect.right > x and self.rect.top < y and self.rect.bottom > y:
+            mousepos = pygame.mouse.get_pos()
+            # We cannot simply check against the menuitem's rect, because the menu item might be scrolled off the screen
+            if self.outer_item.menu.rect.collidepoint(mousepos) and self.rect.collidepoint(mousepos):
                 event_data = {'world_data': self._world_info,
                               'ui_element': self}
                 pygame.event.post(pygame.event.Event(PYCRAFT_WORLD_MENU_SELECTED, event_data))

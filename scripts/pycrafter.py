@@ -78,7 +78,6 @@ class PycrafterMainPanel(UIPanel):
         print(f'rr: {rr}')
         self._world_menu = PycraftWorldMenu(
             rr, self.ui_manager,
-            starting_height=5,
             container=self,
             anchors={
                 'top': 'top',
@@ -99,6 +98,65 @@ class PycrafterMainPanel(UIPanel):
                 world['last_played'], world['mode'], world['cheats'], world['version']
             )
         self._world_menu.fit_scrolling_area_to_items()
+        # add buttons to bottom pain
+        btn_width = 150
+        btn_height = 50
+        n_buttons = 3
+        btn_gap = 30
+        btn_y = self._bottom_dirt.rect.center[1] - btn_height / 2
+        btn_x = self._bottom_dirt.rect.width/2 - (n_buttons * btn_width + (n_buttons - 1) * btn_gap)/2
+
+        ## Map button
+        from pygame_gui.elements import UIButton
+        self._map_button = UIButton(
+            pygame.Rect(btn_x, btn_y, btn_width, btn_height),
+            'Map Data',
+            self.ui_manager,
+            container=self,
+            tool_tip_text='View Map Data',
+            anchors={
+                'top': 'top',
+                'left': 'left',
+                'bottom': 'bottom',
+                'right': 'left'
+            }
+        )
+        ## data button
+        btn_x += btn_width + btn_gap
+        self._data_button = UIButton(
+            pygame.Rect(btn_x, btn_y, btn_width, btn_height),
+            'View World Data',
+            self.ui_manager,
+            container=self,
+            anchors={
+                'top': 'top',
+                'left': 'left',
+                'bottom': 'bottom',
+                'right': 'left'
+            }
+        )
+        ## configuration button
+        btn_x += btn_width + btn_gap
+        self._configuration_button = UIButton(
+            pygame.Rect(btn_x, btn_y, btn_width, btn_height),
+            'Configuration',
+            self.ui_manager,
+            container=self,
+            anchors={
+                'top': 'top',
+                'left': 'left',
+                'bottom': 'bottom',
+                'right': 'left'
+            },
+            tool_tip_text='Set Pycraft Configuration',
+            starting_height=3
+        )
+        self._configuration_button.enable()
+
+    def process_event(self, event: pygame.event.Event) -> bool:
+        print(f'EVENT: {event}')
+        if super().process_event(event):
+            return True
 
 class PycrafterApp(GuiApp):
     def __init__(self, size, framerate=60, ):
