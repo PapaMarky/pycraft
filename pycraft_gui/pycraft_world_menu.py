@@ -22,6 +22,7 @@ class PycraftMenuItemItem(UIPanel):
                  mode: str,
                  cheats: bool,
                  version: str,
+                 has_maps: bool,
                  outer_item,
                  margin,
                  relative_rect, starting_layer_height,
@@ -34,7 +35,8 @@ class PycraftMenuItemItem(UIPanel):
             'last_played': last_played,
             'mode': mode,
             'cheats': cheats,
-            'version': version
+            'version': version,
+            'has_maps': has_maps
         }
 
         self.outer_item = outer_item
@@ -133,8 +135,11 @@ class PycraftMenuItemItem(UIPanel):
             if self.outer_item.menu.rect.collidepoint(mousepos) and self.rect.collidepoint(mousepos):
                 event_data = {'world_data': self._world_info,
                               'ui_element': self}
-                pygame.event.post(pygame.event.Event(PYCRAFT_WORLD_MENU_SELECTED, event_data))
-                self.outer_item.menu.select_item(self.outer_item)
+                if self.outer_item.is_selected:
+                    self.outer_item.menu.select_item(None)
+                else:
+                    pygame.event.post(pygame.event.Event(PYCRAFT_WORLD_MENU_SELECTED, event_data))
+                    self.outer_item.menu.select_item(self.outer_item)
                 return True
 
         return False
@@ -173,6 +178,7 @@ class PycraftWorldMenuItem():
                  mode: str,
                  cheats: bool,
                  version: str,
+                 has_maps: bool,
                  menu,
                  relative_rect, starting_layer_height, manager,
                  margin=0,
@@ -199,6 +205,7 @@ class PycraftWorldMenuItem():
                                         mode,
                                         cheats,
                                         version,
+                                        has_maps,
                                         self,
                                         margin,
                                         rr,
@@ -218,6 +225,9 @@ class PycraftWorldMenuItem():
         self.item.set_dimensions((dimensions[0] - PycraftWorldMenuItem.HIGHLIGHT_WIDTH * 2,
                                   dimensions[1] - PycraftWorldMenuItem.HIGHLIGHT_WIDTH * 2))
 
+    @property
+    def is_selected(self):
+        return self.highlight.visible
 
 class PycraftWorldMenu(UIScrollingContainer):
     """
@@ -234,15 +244,24 @@ class PycraftWorldMenu(UIScrollingContainer):
                                                **kwargs
                                                )
         self._items = []
-        self.selected_item = None
+        self._selected_item = None
 
     def select_item(self, item):
+        if item is None:
+            if self._selected_item is not None:
+                self._selected_item.highlight.hide()
+                self._selected_item = None
+
         for i in self._items:
             if i == item:
                 i.highlight.show()
-                self.selected_item = i
+                self._selected_item = i
             else:
                 i.highlight.hide()
+
+    @property
+    def selected_item(self):
+        return self._selected_item
 
     @property
     def item_margin(self):
@@ -278,7 +297,8 @@ class PycraftWorldMenu(UIScrollingContainer):
                  last_played: datetime.datetime,
                  mode: str,
                  cheats: bool,
-                 version: str):
+                 version: str,
+                 has_maps: bool):
         """
         Add an item to the menu.
 
@@ -292,7 +312,7 @@ class PycraftWorldMenu(UIScrollingContainer):
         """
         y = len(self._items) * self.item_height
         rr = pygame.Rect(0, y, self.item_width, self.item_height)
-        item = PycraftWorldMenuItem(icon, name, file_name, last_played, mode, cheats, version,
+        item = PycraftWorldMenuItem(icon, name, file_name, last_played, mode, cheats, version, has_maps,
                                     self,
                                     rr, 10,
                                     margin=self.item_margin,
@@ -361,4 +381,6 @@ class PycraftWorldMenu(UIScrollingContainer):
             if event.x and self.horiz_scroll_bar:
                 self.horiz_scroll_bar.scroll_wheel_moved = True
                 self.horiz_scroll_bar.scroll_wheel_amount += event.x
-        return True
+            return True
+        if event.type == PYCRAFT_WORLD_MENU_SELECTED:
+            pass

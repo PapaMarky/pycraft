@@ -1,162 +1,11 @@
-import os
-
 import pygame
-from pygame_gui.elements import UILabel, UIPanel, UIImage
 
 import pycraft_gui
-from pycraft import World
 from pycraft_gui.gui_app import GuiApp
-from pycraft_gui.constants import PYCRAFT_WORLD_MENU_HOVERED, PYCRAFT_WORLD_MENU_UNHOVERED, \
-    PYCRAFT_WORLD_MENU_SELECTED
-from pycraft_gui.pycraft_world_menu import PycraftWorldMenu
-from pycraft_gui.ui_image_tiled import UIImageTiled
+from pycraft_gui.pycrafter_main_panel import PycrafterMainPanel
 
 print(f'Pycraft GUI Installed at "{pycraft_gui.install_path}"')
 print(f' - Data Dir: {pycraft_gui.get_data_dir()}')
-# root container - holds scrollbars and "view" container
-# view container - tracks size of root container and scroll bars. (changes size when scrollbars come / go?)
-# scrollable container - the container that gets scrolled around
-#
-class PycrafterMainPanel(UIPanel):
-    def __init__(self, *args, **kwargs):
-        super(PycrafterMainPanel, self).__init__(*args, **kwargs)
-        self._world_menu = None
-        self._bottom_dirt = None
-        self._dirt_label = None
-        self._top_dirt = None
-
-        x = 0
-        y = 0
-        window_size = self.rect.size
-        width = window_size[0]
-        height = 150
-        # Top Panel:
-        # tiled image background panel
-        dirt_image_path = pycraft_gui.get_data_file_path('dark_dirt.jpg')
-        dirt_surface = pygame.image.load(dirt_image_path)
-        dirt_rect = pygame.Rect(x, y, width, height)
-        dirt_anchors = {
-            'top': 'top', 'left': 'left',
-            'bottom': 'top', 'right': 'right'
-        }
-        self._top_dirt = UIImageTiled(
-            dirt_rect,
-            dirt_surface,
-            self.ui_manager,
-            container=self,
-            object_id='@dirt_background',
-            anchors=dirt_anchors
-        )
-        label_rect = pygame.Rect(dirt_rect)
-        self._dirt_label = UILabel(
-            label_rect,
-            'PyCraft', self.ui_manager,
-            object_id='@title_label',
-            container=self,
-            anchors=dirt_anchors
-        )
-        rect = pygame.Rect(0, -height, width, height)
-        print(f'size: {self.rect.size}')
-        print(f'rect: {rect}')
-        self._bottom_dirt = UIImageTiled(
-            rect,
-            dirt_surface,
-            self.ui_manager,
-            container=self,
-            object_id='@dirt_background',
-            anchors={
-                'top': 'bottom',
-                'left': 'left',
-                'bottom': 'bottom',
-                'right': 'right'
-            }
-        )
-        width = self.rect.width - 150
-        height = self.rect.height - (self._top_dirt.rect.height + self._bottom_dirt.rect.height)
-        x = self.rect.width / 2 - width / 2
-        rr = pygame.Rect(x, 0, width, height)
-        print(f'rr: {rr}')
-        self._world_menu = PycraftWorldMenu(
-            rr, self.ui_manager,
-            container=self,
-            anchors={
-                'top': 'top',
-                'left': 'left',
-                'bottom': 'bottom',
-                'right': 'right',
-                'top_target': self._top_dirt,
-                'bottom_target': self._bottom_dirt
-            }
-        )
-
-        saved_worlds = World.get_saved_worlds()
-        for world in saved_worlds:
-            print(f'World: {world["name"]}')
-            self._world_menu.add_item(
-                world['icon_path'],
-                world['name'], world['file_name'],
-                world['last_played'], world['mode'], world['cheats'], world['version']
-            )
-        self._world_menu.fit_scrolling_area_to_items()
-        # add buttons to bottom pain
-        btn_width = 150
-        btn_height = 50
-        n_buttons = 3
-        btn_gap = 30
-        btn_y = self._bottom_dirt.rect.center[1] - btn_height / 2
-        btn_x = self._bottom_dirt.rect.width/2 - (n_buttons * btn_width + (n_buttons - 1) * btn_gap)/2
-
-        ## Map button
-        from pygame_gui.elements import UIButton
-        self._map_button = UIButton(
-            pygame.Rect(btn_x, btn_y, btn_width, btn_height),
-            'Map Data',
-            self.ui_manager,
-            container=self,
-            tool_tip_text='View Map Data',
-            anchors={
-                'top': 'top',
-                'left': 'left',
-                'bottom': 'bottom',
-                'right': 'left'
-            }
-        )
-        ## data button
-        btn_x += btn_width + btn_gap
-        self._data_button = UIButton(
-            pygame.Rect(btn_x, btn_y, btn_width, btn_height),
-            'View World Data',
-            self.ui_manager,
-            container=self,
-            anchors={
-                'top': 'top',
-                'left': 'left',
-                'bottom': 'bottom',
-                'right': 'left'
-            }
-        )
-        ## configuration button
-        btn_x += btn_width + btn_gap
-        self._configuration_button = UIButton(
-            pygame.Rect(btn_x, btn_y, btn_width, btn_height),
-            'Configuration',
-            self.ui_manager,
-            container=self,
-            anchors={
-                'top': 'top',
-                'left': 'left',
-                'bottom': 'bottom',
-                'right': 'left'
-            },
-            tool_tip_text='Set Pycraft Configuration',
-            starting_height=3
-        )
-        self._configuration_button.enable()
-
-    def process_event(self, event: pygame.event.Event) -> bool:
-        print(f'EVENT: {event}')
-        if super().process_event(event):
-            return True
 
 class PycrafterApp(GuiApp):
     def __init__(self, size, framerate=60, ):
@@ -173,20 +22,24 @@ class PycrafterApp(GuiApp):
             pygame.Rect((0, 0), size),
             1,
             self.ui_manager,
+            app=self,
             object_id='@main_panel',
             anchors={
                 'top': 'top', 'left': 'left',
                 'bottom': 'bottom', 'right': 'right'
             }
         )
+    def show_map(self):
+        print(f'Show map')
 
-    def handle_event(self, event):
-        if event.type == PYCRAFT_WORLD_MENU_HOVERED:
-            print(f'PYCRAFT_WORLD_MENU_HOVERED: {event.world_data["name"]}')
-        if event.type == PYCRAFT_WORLD_MENU_UNHOVERED:
-            print(f'PYCRAFT_WORLD_MENU_UNHOVERED: {event.world_data["name"]}')
-        if event.type == PYCRAFT_WORLD_MENU_SELECTED:
-            print(f'PYCRAFT_WORLD_MENU_SELECTED: {event.world_data["name"]}')
+    def show_data(self):
+        print(f'show data')
+
+    def show_configuration(self):
+        print(f'show config')
+
+    def show_main(self):
+        print(f'show main menu')
 
 app = PycrafterApp((1020, 900))
 app.setup()

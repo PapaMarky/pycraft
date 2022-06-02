@@ -1,3 +1,4 @@
+import glob
 from datetime import datetime
 from pathlib import Path
 
@@ -47,6 +48,8 @@ class World:
             cheats = level.allowCommands
             dt = datetime.fromtimestamp(last_played/1000)
             version = level.Version['Name'].value
+            mapfilelist = glob.glob(os.path.join(world_path, 'data', 'map*.dat'))
+            has_maps = len(mapfilelist) > 0
             save_world_list.append({
                 'file_name': file_name,
                 'icon_path': icon_path,
@@ -54,7 +57,8 @@ class World:
                 'last_played': dt,
                 'mode': mode,
                 'cheats': cheats,
-                'version': version
+                'version': version,
+                'has_maps': has_maps
             })
         save_world_list.sort(key=lambda x: x['last_played'], reverse=True)
         return save_world_list
